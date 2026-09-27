@@ -54,14 +54,8 @@
     <div class="permis-head">
       <div>
         <h1 id="formTitle">PERMIS DE TRAVAIL DE CHANTIER</h1>
-        <div class="ref">IND-ING-RAQ-001 · Version digitale</div>
       </div>
       <div class="num" id="numPermisDisplay">Nouveau</div>
-    </div>
-
-    <div class="section">
-      <h2>Secteur</h2>
-      <select id="f_sector_id"><option value="">— Sélectionner un secteur —</option></select>
     </div>
 
     <div class="section">
@@ -69,17 +63,17 @@
       <div class="grid2">
         <div>
           <label>Donneur d'ordre Danone <span class="req">*</span></label>
-          <input type="text" id="f_donneur">
+          <input type="text" id="f_donneur" placeholder="Nom du donneur d'ordre">
           <div style="height:8px"></div>
           <label>Téléphone</label>
-          <input type="tel" id="f_donneur_tel">
+          <input type="tel" id="f_donneur_tel" placeholder="ex. 450 555-0100">
         </div>
         <div>
           <label>Entreprise extérieure <span class="req">*</span></label>
           <input type="text" id="f_entreprise" placeholder="Utilisé par le sous-traitant pour consulter son permis">
           <div style="height:8px"></div>
           <label>Nom de l'exécutant <span class="req">*</span></label>
-          <input type="text" id="f_executant">
+          <input type="text" id="f_executant" placeholder="Nom du travailleur">
           <div style="height:8px"></div>
           <label>Téléphone</label>
           <input type="tel" id="f_executant_tel">
@@ -123,13 +117,13 @@
       </div>
     </div>
 
-    <div class="section"><h2>A · Procédures et risques à considérer</h2>
+    <div class="section"><h2>A · Procédures et risques à considérer <span class="count-badge" id="countA">0</span></h2>
       <div class="risques"><div class="risques-grid" id="risquesA"></div></div>
     </div>
-    <div class="section"><h2>B · Comportements à considérer</h2>
+    <div class="section"><h2>B · Comportements à considérer <span class="count-badge" id="countB">0</span></h2>
       <div class="risques"><div class="risques-grid" id="risquesB"></div></div>
     </div>
-    <div class="section"><h2>C · Zone critique — Sécurité alimentaire</h2>
+    <div class="section"><h2>C · Zone critique — Sécurité alimentaire <span class="count-badge" id="countC">0</span></h2>
       <div class="risques"><div class="risques-grid" id="risquesC"></div></div>
       <div class="grid2" style="margin-top:12px">
         <div><label>Conformité</label>
@@ -141,12 +135,19 @@
 
     <div class="section">
       <h2>Travail en hauteur</h2>
-      <div class="hot-toggle" style="background:#e3f2fd;border-color:var(--bleu)">
-        <label class="switch"><input type="checkbox" id="f_height_work" onchange="toggleSection('height')"><span class="slider" style="background:#ccc"></span></label>
+      <div class="hot-toggle hot-toggle--hauteur">
+        <label class="switch"><input type="checkbox" id="f_height_work" onchange="toggleSection('height')"><span class="slider"></span></label>
         <div><strong>Travail en hauteur requis ?</strong><br><span style="font-size:13px;color:#666">Échafaudage, nacelle, échelle, chute > 3 m…</span></div>
+        <span class="state">Non requis</span>
       </div>
       <div id="heightSection" class="hidden">
-        <div class="risques" style="margin-top:12px;background:#e8f2fc;border-color:var(--bleu)"><div class="risques-grid" id="risquesHauteur"></div></div>
+        <div class="risques" style="margin-top:12px;background:#e8f2fc;border-color:var(--bleu)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <b style="font-size:12px;text-transform:uppercase;color:var(--gris)">Vérifications</b>
+            <span class="count-badge" id="countHauteur" style="background:#fff;color:var(--bleu)">0</span>
+          </div>
+          <div class="risques-grid" id="risquesHauteur"></div>
+        </div>
         <div class="grid3" style="margin-top:12px">
           <div><label>Moyen d'accès</label>
             <select id="f_height_acces"><option value="">—</option><option>Échafaudage</option><option>Nacelle / plateforme élévatrice</option><option>Échelle</option><option>Ligne de vie / harnais</option><option>Autre</option></select>
@@ -158,12 +159,19 @@
         </div>
         <div style="margin-top:12px"><label>Surveillant / vigie désigné <span class="req">*</span></label><input type="text" id="f_height_vigie"></div>
 
-        <div class="hot-toggle" style="background:#fff3e0;border-color:var(--orange);margin-top:14px">
+        <div class="hot-toggle hot-toggle--bonbonne" style="margin-top:14px">
           <label class="switch"><input type="checkbox" id="f_bonbonne_work" onchange="toggleSection('bonbonne')"><span class="slider"></span></label>
           <div><strong>Bonbonne(s) de gaz transportée(s) en hauteur ?</strong><br><span style="font-size:13px;color:#666">Oxygène, acétylène, propane</span></div>
+          <span class="state">Non requis</span>
         </div>
         <div id="bonbonneSection" class="hidden">
-          <div class="risques" style="margin-top:12px;background:#fff8ea;border-color:var(--orange)"><div class="risques-grid" id="risquesBonbonne"></div></div>
+          <div class="risques" style="margin-top:12px;background:#fff8ea;border-color:var(--orange)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <b style="font-size:12px;text-transform:uppercase;color:var(--gris)">Vérifications</b>
+              <span class="count-badge" id="countBonbonne" style="background:#fff;color:#c77700">0</span>
+            </div>
+            <div class="risques-grid" id="risquesBonbonne"></div>
+          </div>
           <div class="grid3" style="margin-top:12px">
             <div><label>Type de gaz</label>
               <select id="f_bonbonne_type"><option value="">—</option><option>Oxygène</option><option>Acétylène</option><option>Propane</option><option>Oxygène + Acétylène</option><option>Autre</option></select>
@@ -179,12 +187,19 @@
 
     <div class="section">
       <h2>Travail au toit</h2>
-      <div class="hot-toggle" style="background:#ede7f6;border-color:var(--violet)">
-        <label class="switch"><input type="checkbox" id="f_roof_work" onchange="toggleSection('roof')"><span class="slider" style="background:#ccc"></span></label>
+      <div class="hot-toggle hot-toggle--toit">
+        <label class="switch"><input type="checkbox" id="f_roof_work" onchange="toggleSection('roof')"><span class="slider"></span></label>
         <div><strong>Travail au toit requis ?</strong><br><span style="font-size:13px;color:#666">Ouvertures/lucarnes, rives, résistance du toit…</span></div>
+        <span class="state">Non requis</span>
       </div>
       <div id="roofSection" class="hidden">
-        <div class="risques" style="margin-top:12px;background:#f1edfa;border-color:var(--violet)"><div class="risques-grid" id="risquesToit"></div></div>
+        <div class="risques" style="margin-top:12px;background:#f1edfa;border-color:var(--violet)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <b style="font-size:12px;text-transform:uppercase;color:var(--gris)">Vérifications</b>
+            <span class="count-badge" id="countToit" style="background:#fff;color:var(--violet)">0</span>
+          </div>
+          <div class="risques-grid" id="risquesToit"></div>
+        </div>
         <div class="grid3" style="margin-top:12px">
           <div><label>Type de toit</label>
             <select id="f_roof_type"><option value="">—</option><option>Toit plat</option><option>Toit en pente</option><option>Toiture avec lucarnes/tuiles</option><option>Autre</option></select>
@@ -202,12 +217,19 @@
 
     <div class="section">
       <h2>Permis de travail à chaud</h2>
-      <div class="hot-toggle">
+      <div class="hot-toggle hot-toggle--chaud">
         <label class="switch"><input type="checkbox" id="f_hot_work" onchange="toggleSection('hot')"><span class="slider"></span></label>
         <div><strong>Travail à chaud requis ?</strong><br><span style="font-size:13px;color:#666">Brasage, découpage, meulage, soudage, perçage…</span></div>
+        <span class="state">Non requis</span>
       </div>
       <div id="hotSection" class="hidden">
-        <div class="risques" style="margin-top:12px"><div class="risques-grid" id="risquesHot"></div></div>
+        <div class="risques" style="margin-top:12px;background:#ffebee;border-color:var(--rouge)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <b style="font-size:12px;text-transform:uppercase;color:var(--gris)">Précautions</b>
+            <span class="count-badge" id="countHot" style="background:#fff;color:var(--rouge)">0</span>
+          </div>
+          <div class="risques-grid" id="risquesHot"></div>
+        </div>
         <div class="grid3" style="margin-top:12px">
           <div><label>Nature du travail à chaud</label><input type="text" id="f_hot_nature"></div>
           <div><label>Heure début</label><input type="time" id="f_hot_debut"></div>

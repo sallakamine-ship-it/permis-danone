@@ -70,6 +70,7 @@ buildChecks('risquesHauteur', LISTE_HAUTEUR, 'HAUTEUR');
 buildChecks('risquesBonbonne', LISTE_BONBONNE, 'BONBONNE');
 buildChecks('risquesToit', LISTE_TOIT, 'TOIT');
 buildChecks('risquesHot', LISTE_HOT, 'HOT');
+refreshRiskCounts();
 
 function getChecks(grp){ return [...document.querySelectorAll(`input[data-grp="${grp}"]:checked`)].map(c=>c.value); }
 function setChecks(grp, values){
@@ -164,17 +165,38 @@ function show(v){
 }
 
 // ---------- Sections conditionnelles ----------
-function toggleSection(name){
-  document.getElementById(name+'Section').classList.toggle('hidden', !document.getElementById('f_'+name+'_work').checked);
+function syncToggleState(name){
+  const checkbox = document.getElementById('f_'+name+'_work');
+  document.getElementById(name+'Section').classList.toggle('hidden', !checkbox.checked);
+  const stateEl = checkbox.closest('.hot-toggle').querySelector('.state');
+  if(stateEl) stateEl.textContent = checkbox.checked ? 'Requis' : 'Non requis';
 }
+function toggleSection(name){ syncToggleState(name); }
 
-// ---------- Secteurs (formulaire + registre) ----------
+// ---------- Compteurs de sélection sur les listes de vérification ----------
+const RISK_COUNT_GROUPS = [
+  ['risquesA','countA'], ['risquesB','countB'], ['risquesC','countC'],
+  ['risquesHauteur','countHauteur'], ['risquesBonbonne','countBonbonne'],
+  ['risquesToit','countToit'], ['risquesHot','countHot'],
+];
+function refreshRiskCounts(){
+  RISK_COUNT_GROUPS.forEach(([containerId, badgeId])=>{
+    const c = document.getElementById(containerId);
+    const b = document.getElementById(badgeId);
+    if(!c || !b) return;
+    const total = c.querySelectorAll('input[type=checkbox]').length;
+    const checked = c.querySelectorAll('input[type=checkbox]:checked').length;
+    b.textContent = checked + '/' + total;
+  });
+}
+document.getElementById('view-form').addEventListener('change', e=>{
+  if(e.target.matches('input[type=checkbox]')) refreshRiskCounts();
+});
+
+// ---------- Secteurs (registre uniquement — le formulaire n'assigne plus de secteur) ----------
 async function loadSectorsIntoSelects(){
   const sectors = await api('/api/sectors').catch(()=>[]);
-  const formSel = document.getElementById('f_sector_id');
   const filterSel = document.getElementById('filterSector');
-  formSel.innerHTML = '<option value="">— Sélectionner un secteur —</option>' +
-    sectors.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
   filterSel.innerHTML = '<option value="">Tous les secteurs</option>' +
     sectors.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
 }
@@ -192,12 +214,12 @@ function resetForm(){
     if(e.type==='checkbox') e.checked=false; else e.value='';
   });
   document.getElementById('f_statut').value = 'Actif';
-  ['heightSection','bonbonneSection','roofSection','hotSection'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['height','bonbonne','roof','hot'].forEach(syncToggleState);
+  refreshRiskCounts();
 }
 
 function collectFormData(){
   return {
-    sector_id: val('f_sector_id') ? parseInt(val('f_sector_id')) : null,
     donneur: val('f_donneur'), donneur_tel: val('f_donneur_tel'),
     entreprise: val('f_entreprise'), executant: val('f_executant'), executant_tel: val('f_executant_tel'),
     description: val('f_description'), lieux: val('f_lieux'), zone: val('f_zone'),
@@ -285,14 +307,14 @@ function populateFormFromPermit(p){
   document.getElementById('f_height_m').value = p.height_m || '';
   document.getElementById('f_height_sauvetage').value = p.height_sauvetage || '';
   document.getElementById('f_height_vigie').value = p.height_vigie || '';
-  document.getElementById('heightSection').classList.toggle('hidden', !p.height_work);
+  syncToggleState('height');
 
   document.getElementById('f_bonbonne_work').checked = !!p.bonbonne_work;
   setChecks('BONBONNE', p.risques_bonbonne);
   document.getElementById('f_bonbonne_type').value = p.bonbonne_type || '';
   document.getElementById('f_bonbonne_nombre').value = p.bonbonne_nombre || '';
   document.getElementById('f_bonbonne_levage').value = p.bonbonne_levage || '';
-  document.getElementById('bonbonneSection').classList.toggle('hidden', !p.bonbonne_work);
+  syncToggleState('bonbonne');
 
   document.getElementById('f_roof_work').checked = !!p.roof_work;
   setChecks('TOIT', p.risques_toit);
@@ -300,7 +322,7 @@ function populateFormFromPermit(p){
   document.getElementById('f_roof_resistance').value = p.roof_resistance || '';
   document.getElementById('f_roof_perimetre').value = p.roof_perimetre || '';
   document.getElementById('f_roof_vigie').value = p.roof_vigie || '';
-  document.getElementById('roofSection').classList.toggle('hidden', !p.roof_work);
+  syncToggleState('roof');
 
   document.getElementById('f_hot_work').checked = !!p.hot_work;
   setChecks('HOT', p.risques_hot);
@@ -309,9 +331,10 @@ function populateFormFromPermit(p){
   document.getElementById('f_hot_fin').value = p.hot_fin || '';
   document.getElementById('f_hot_surv').value = p.hot_surv || '';
   document.getElementById('f_hot_ext').value = p.hot_ext || '';
-  document.getElementById('hotSection').classList.toggle('hidden', !p.hot_work);
+  syncToggleState('hot');
 
   document.getElementById('f_statut').value = p.statut || 'Actif';
+  refreshRiskCounts();
 }
 
 // ---------- Registre ----------
