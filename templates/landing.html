@@ -3,105 +3,125 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Permis de travail de chantier — Danone Boucherville</title>
-<meta name="description" content="Plateforme numérique de gestion des permis de travail de chantier — Danone Boucherville.">
-<link rel="stylesheet" href="/static/style.css">
+<title>Opsafe — Sécurité opérationnelle, simplifiée</title>
+<meta name="description" content="Opsafe — plateforme de gestion de la sécurité de chantier : permis de travail numériques, registre centralisé, accès instantané des sous-traitants par QR code.">
+<link rel="stylesheet" href="/static/opsafe.css">
 </head>
-<body class="landing-body">
-{% from "_macros.html" import brand_mark_compact %}
+<body class="opsafe-body">
 
-<header class="lp-topbar">
-  <div class="lp-topbar-inner">
-    {{ brand_mark_compact('30px') }}
-    <a href="/admin" class="lp-topbar-link">Accès personnel Danone →</a>
+{% macro os_mark_compact() -%}
+<span class="os-mark os-mark--compact">
+  <svg width="30" height="30" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="1" y="1" width="32" height="32" rx="9" fill="url(#osGradCompact)"/>
+    <path d="M10 17.5l4.5 4.5L24 12" stroke="white" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <defs><linearGradient id="osGradCompact" x1="0" y1="0" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1BD8C4"/><stop offset="1" stop-color="#0E8074"/>
+    </linearGradient></defs>
+  </svg>
+  <span class="os-mark-word">Opsafe</span>
+</span>
+{%- endmacro %}
+
+<header class="os-topbar">
+  <div class="os-topbar-inner">
+    {{ os_mark_compact() }}
+    <a href="/admin" class="os-topbar-link">Accès client →</a>
   </div>
 </header>
 
-<section class="lp-hero">
-  <div class="lp-hero-inner">
-    <span class="lp-eyebrow">Site de Boucherville, Québec</span>
-    <h1>Permis de travail de chantier,<br>numérique et sécurisé</h1>
-    <p class="lp-hero-sub">
-      Le registre centralisé des permis de travail du site — création et suivi par
-      le personnel Danone, consultation instantanée pour les sous-traitants par
-      simple scan du QR code de leur secteur, sans compte à créer.
+<section class="os-hero">
+  <div class="os-hero-inner">
+    <span class="os-eyebrow">Plateforme SST multi-sites</span>
+    <h1>La sécurité de chantier,<br>sans friction.</h1>
+    <p class="os-hero-sub">
+      Permis de travail numériques, registre centralisé et accès instantané des
+      sous-traitants par simple scan du QR code de leur secteur — une seule
+      plateforme pour la sécurité de tous vos chantiers.
     </p>
-    <div class="lp-hero-cta">
-      <a href="/admin"><button class="btn btn-primary lp-btn-lg">🔐 Accès personnel Danone</button></a>
-      <a href="#soustraitants"><button class="btn btn-secondary lp-btn-lg">📱 Je suis sous-traitant</button></a>
+    <div class="os-hero-cta">
+      <a href="/admin"><button class="os-btn os-btn-primary">🔐 Accès client</button></a>
+      <a href="#soustraitants"><button class="os-btn os-btn-ghost">📱 Je suis sous-traitant</button></a>
     </div>
   </div>
 </section>
 
-<section class="lp-features">
-  <div class="lp-section-inner">
-    <h2 class="lp-section-title">Ce que fait la plateforme</h2>
-    <div class="lp-feature-grid">
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">🔒</div>
+<section class="os-section">
+  <div class="os-section-inner">
+    <h2 class="os-section-title">Ce que fait la plateforme</h2>
+    <p class="os-section-sub">Le cœur d'Opsafe aujourd'hui : le permis de travail, du terrain jusqu'au registre.</p>
+    <div class="os-feature-grid">
+      <div class="os-feature-card">
+        <div class="os-feature-icon">🔒</div>
         <h3>Comptes sécurisés</h3>
-        <p>Mots de passe chiffrés et sessions protégées pour le personnel Danone. Aucune donnée en clair.</p>
+        <p>Mots de passe chiffrés et sessions protégées par équipe. Aucune donnée en clair.</p>
       </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">📋</div>
+      <div class="os-feature-card">
+        <div class="os-feature-icon">📋</div>
         <h3>Registre centralisé</h3>
         <p>Tous les permis actifs et fermés au même endroit, avec recherche et filtres par secteur ou statut.</p>
       </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">📱</div>
+      <div class="os-feature-card">
+        <div class="os-feature-icon">📱</div>
         <h3>QR code par secteur</h3>
         <p>Chaque zone de travail a son propre code. Le sous-traitant consulte son permis sans créer de compte.</p>
       </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">✍️</div>
+      <div class="os-feature-card">
+        <div class="os-feature-icon">✍️</div>
         <h3>Fermeture à deux signatures</h3>
         <p>Signature électronique du donneur d'ordre et de l'exécutant requise pour fermer officiellement un permis.</p>
       </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">⏱️</div>
+      <div class="os-feature-card">
+        <div class="os-feature-icon">⏱️</div>
         <h3>Suivi du cycle de vie</h3>
         <p>Historique horodaté de chaque changement de statut, et fermeture automatique à l'échéance.</p>
       </div>
-      <div class="lp-feature-card">
-        <div class="lp-feature-icon">📸</div>
+      <div class="os-feature-card">
+        <div class="os-feature-icon">📸</div>
         <h3>Preuves visuelles</h3>
-        <p>Photos du chantier jointes directement au permis, consultables par tous les intervenants autorisés.</p>
+        <p>Photos de chantier jointes directement au permis, consultables par tous les intervenants autorisés.</p>
       </div>
+    </div>
+
+    <div class="os-roadmap">
+      <span class="os-roadmap-label">Sur la feuille de route —</span>
+      <span class="os-chip">🎓 Formations</span>
+      <span class="os-chip">🔍 Audits</span>
+      <span class="os-chip">⚠️ Analyse de risques</span>
     </div>
   </div>
 </section>
 
-<section class="lp-paths" id="soustraitants">
-  <div class="lp-section-inner">
-    <h2 class="lp-section-title">Deux façons d'accéder à la plateforme</h2>
-    <div class="lp-path-grid">
-      <div class="lp-path-card lp-path-card--staff">
-        <div class="lp-path-icon">🦺</div>
-        <h3>Personnel Danone</h3>
+<section class="os-section os-section--muted" id="soustraitants">
+  <div class="os-section-inner">
+    <h2 class="os-section-title">Deux façons d'accéder à la plateforme</h2>
+    <div class="os-path-grid">
+      <div class="os-path-card os-path-card--staff">
+        <div class="os-path-icon">🦺</div>
+        <h3>Personnel du site</h3>
         <p>
           Coordonnateurs SST et donneurs d'ordre : créez, éditez et fermez les
           permis, gérez les secteurs et consultez le registre complet du site.
         </p>
-        <a href="/admin"><button class="btn btn-primary">Se connecter</button></a>
+        <a href="/admin"><button class="os-btn os-btn-dark">Se connecter</button></a>
       </div>
-      <div class="lp-path-card lp-path-card--contractor">
-        <div class="lp-path-icon">📷</div>
+      <div class="os-path-card os-path-card--contractor">
+        <div class="os-path-icon">📷</div>
         <h3>Sous-traitants</h3>
         <p>
           Aucun compte requis. Scannez le QR code affiché dans votre secteur de
           travail, entrez le numéro de permis et le nom de votre entreprise pour
           consulter les conditions de votre permis.
         </p>
-        <span class="lp-path-note">Disponible sur place, via le QR code de votre secteur</span>
+        <span class="os-path-note">Disponible sur place, via le QR code de votre secteur</span>
       </div>
     </div>
   </div>
 </section>
 
-<footer class="lp-footer">
-  <div class="lp-footer-inner">
-    {{ brand_mark_compact('22px') }}
-    <p>Site Danone — Boucherville, Québec &nbsp;·&nbsp; Processus SST interne, réf. IND-ING-RAQ-001</p>
+<footer class="os-footer">
+  <div class="os-footer-inner">
+    {{ os_mark_compact() }}
+    <p>© 2026 Opsafe &nbsp;·&nbsp; Plateforme de sécurité opérationnelle pour vos chantiers</p>
   </div>
 </footer>
 

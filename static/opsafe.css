@@ -1,0 +1,162 @@
+/* ===========================================================================
+   Opsafe — page d'accueil de la plateforme (indépendante du branding Danone).
+   Fichier dédié, sans dépendance à style.css : /admin et /secteur/... gardent
+   leur propre habillage Danone sans être affectés par ces règles.
+   =========================================================================== */
+
+:root{
+  --os-navy:        #0A1220;
+  --os-navy-soft:   #101B30;
+  --os-navy-line:   #1E2C45;
+  --os-teal:        #17C7B0;
+  --os-teal-dark:   #0E9587;
+  --os-teal-ink:    #063C36;
+  --os-amber:       #F5A524;
+  --os-ink:         #0F172A;
+  --os-gray:        #5B6B84;
+  --os-gray-light:  #8592A6;
+  --os-bg:          #F6F8FB;
+  --os-white:       #FFFFFF;
+  --os-border:      #E4E9F1;
+  --os-radius:      16px;
+}
+
+*{ box-sizing:border-box; }
+
+.opsafe-body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:var(--os-ink);
+  background:var(--os-white);
+  -webkit-font-smoothing:antialiased;
+}
+
+.opsafe-body a{ color:inherit; text-decoration:none; }
+.opsafe-body button{ font-family:inherit; cursor:pointer; }
+
+/* ---------- topbar ---------- */
+.os-topbar{
+  position:sticky; top:0; z-index:20;
+  background:rgba(10,18,32,.92);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--os-navy-line);
+}
+.os-topbar-inner{
+  max-width:1120px; margin:0 auto; padding:14px 24px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.os-topbar-link{
+  color:#CBD5E1; font-size:14px; font-weight:600;
+  padding:8px 14px; border-radius:999px; border:1px solid var(--os-navy-line);
+  transition:border-color .15s, color .15s;
+}
+.os-topbar-link:hover{ color:#fff; border-color:var(--os-teal); }
+
+/* ---------- logo lockups (definies une seule fois ici) ---------- */
+.os-mark{ display:inline-flex; align-items:center; gap:10px; }
+.os-mark svg{ display:block; flex:none; }
+.os-mark-word{ font-weight:800; letter-spacing:-.01em; color:#fff; }
+.os-mark--compact .os-mark-word{ font-size:19px; }
+
+/* ---------- hero ---------- */
+.os-hero{
+  position:relative; overflow:hidden;
+  background:radial-gradient(1100px 520px at 15% -10%, #123449 0%, transparent 60%),
+             radial-gradient(900px 480px at 90% 10%, #0E3B37 0%, transparent 55%),
+             var(--os-navy);
+  padding:88px 24px 96px;
+}
+.os-hero-inner{ max-width:760px; margin:0 auto; text-align:center; position:relative; z-index:1; }
+.os-eyebrow{
+  display:inline-block; font-size:13px; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--os-teal);
+  background:rgba(23,199,176,.12); border:1px solid rgba(23,199,176,.35);
+  padding:6px 14px; border-radius:999px; margin-bottom:22px;
+}
+.os-hero h1{
+  font-size:44px; line-height:1.15; letter-spacing:-.02em; color:#fff; margin:0 0 18px;
+}
+.os-hero-sub{ font-size:17px; line-height:1.6; color:#AAB8CC; margin:0 auto 34px; max-width:600px; }
+.os-hero-cta{ display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+
+/* ---------- buttons (namespace os- : zero collision avec .btn de style.css) ---------- */
+.os-btn{
+  display:inline-flex; align-items:center; gap:8px; font-size:15px; font-weight:700;
+  padding:14px 24px; border-radius:12px; border:1px solid transparent; transition:transform .12s, box-shadow .12s, background .12s;
+}
+.os-btn:active{ transform:translateY(1px); }
+.os-btn-primary{ background:var(--os-teal); color:#04211D; box-shadow:0 8px 24px rgba(23,199,176,.35); }
+.os-btn-primary:hover{ background:#22DBC2; }
+.os-btn-ghost{ background:transparent; color:#fff; border-color:#2C3D59; }
+.os-btn-ghost:hover{ border-color:#5A7192; }
+.os-btn-dark{ background:var(--os-navy); color:#fff; }
+.os-btn-dark:hover{ background:#16233A; }
+
+/* ---------- sections generales ---------- */
+.os-section{ padding:80px 24px; }
+.os-section-inner{ max-width:1120px; margin:0 auto; }
+.os-section-title{ font-size:28px; letter-spacing:-.01em; margin:0 0 16px; }
+.os-section-sub{ color:var(--os-gray); font-size:15px; margin:0 0 44px; max-width:560px; }
+.os-path-grid{ margin-top:28px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.os-section--muted{ background:var(--os-bg); }
+
+/* ---------- feature grid ---------- */
+.os-feature-grid{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:20px;
+}
+.os-feature-card{
+  background:#fff; border:1px solid var(--os-border); border-radius:var(--os-radius);
+  padding:26px 22px; transition:transform .15s, box-shadow .15s;
+}
+.os-feature-card:hover{ transform:translateY(-3px); box-shadow:0 16px 32px rgba(15,23,42,.07); }
+.os-feature-icon{
+  width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+  background:rgba(23,199,176,.12); font-size:20px; margin-bottom:14px;
+}
+.os-feature-card h3{ font-size:16px; margin:0 0 8px; }
+.os-feature-card p{ font-size:14px; line-height:1.55; color:var(--os-gray); margin:0; }
+
+/* ---------- roadmap strip ---------- */
+.os-roadmap{
+  margin-top:36px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  border:1px dashed var(--os-border); border-radius:var(--os-radius); padding:18px 22px;
+  background:#fff;
+}
+.os-roadmap-label{ font-size:13px; font-weight:700; color:var(--os-gray); text-transform:uppercase; letter-spacing:.04em; }
+.os-chip{
+  display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600;
+  color:#8A5B00; background:#FFF3DD; border:1px solid #F5DCA3;
+  padding:6px 12px; border-radius:999px;
+}
+
+/* ---------- deux chemins ---------- */
+.os-path-card{
+  border-radius:var(--os-radius); padding:32px 28px; border:1px solid var(--os-border);
+}
+.os-path-card--staff{ background:var(--os-navy); color:#fff; }
+.os-path-card--staff p{ color:#AAB8CC; }
+.os-path-card--contractor{ background:#fff; }
+.os-path-card--contractor p{ color:var(--os-gray); }
+.os-path-icon{ font-size:26px; margin-bottom:12px; }
+.os-path-card h3{ font-size:19px; margin:0 0 10px; }
+.os-path-card p{ font-size:14.5px; line-height:1.6; margin:0 0 20px; }
+.os-path-note{ display:block; font-size:13px; color:var(--os-gray-light); margin-top:6px; }
+
+/* ---------- footer ---------- */
+.os-footer{ background:var(--os-navy); border-top:1px solid var(--os-navy-line); padding:34px 24px; }
+.os-footer-inner{
+  max-width:1120px; margin:0 auto; display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:14px;
+}
+.os-footer-inner p{ color:#7C8AA3; font-size:13px; margin:0; }
+
+@media (max-width:860px){
+  .os-feature-grid{ grid-template-columns:repeat(2,1fr); }
+  .os-path-grid{ grid-template-columns:1fr; }
+}
+@media (max-width:560px){
+  .os-hero{ padding:64px 20px 72px; }
+  .os-hero h1{ font-size:32px; }
+  .os-feature-grid{ grid-template-columns:1fr; }
+  .os-section{ padding:56px 20px; }
+}
