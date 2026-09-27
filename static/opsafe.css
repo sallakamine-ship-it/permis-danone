@@ -45,12 +45,27 @@
   max-width:1120px; margin:0 auto; padding:14px 24px;
   display:flex; align-items:center; justify-content:space-between;
 }
-.os-topbar-link{
+.os-topbar-nav{ display:flex; align-items:center; gap:20px; }
+/* Scopé sous .os-topbar pour battre la spécificité de ".opsafe-body a{color:inherit}"
+   (sans quoi le lien hérite du texte noir du body et devient invisible sur le fond noir). */
+.os-topbar .os-topbar-link{
   color:#D8D8D8; font-size:14px; font-weight:600;
   padding:8px 14px; border-radius:999px; border:1px solid var(--os-black-line);
   transition:border-color .15s, color .15s;
 }
-.os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
+.os-topbar .os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
+.os-topbar .os-topbar-navlink{
+  color:#D8D8D8; font-size:14px; font-weight:600; transition:color .15s;
+}
+.os-topbar .os-topbar-navlink:hover{ color:var(--os-yellow); }
+.os-btn-sm{ padding:9px 16px; font-size:13.5px; }
+
+@media (max-width:760px){
+  .os-topbar-navlink{ display:none; }
+}
+@media (max-width:520px){
+  .os-topbar .os-topbar-link{ display:none; }
+}
 
 /* ---------- logo lockup ---------- */
 .os-mark{ display:inline-flex; align-items:center; gap:10px; }
@@ -152,6 +167,16 @@
 .os-path-card p{ font-size:14.5px; line-height:1.6; margin:0 0 20px; }
 .os-path-note{ display:block; font-size:13px; color:var(--os-gray-light); margin-top:6px; }
 
+/* ---------- contact ---------- */
+.os-contact-inner{ display:flex; align-items:center; justify-content:space-between; gap:28px; flex-wrap:wrap; }
+.os-contact-actions{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.os-contact-email{
+  font-size:14.5px; font-weight:600; color:var(--os-ink);
+  border-bottom:1px solid var(--os-border); padding-bottom:2px;
+  transition:color .15s, border-color .15s;
+}
+.os-contact-email:hover{ color:var(--os-yellow-dark); border-color:var(--os-yellow-dark); }
+
 /* ---------- footer ---------- */
 .os-footer{ background:var(--os-black); border-top:1px solid var(--os-black-line); padding:34px 24px; }
 .os-footer-inner{
@@ -159,6 +184,40 @@
   flex-wrap:wrap; gap:14px;
 }
 .os-footer-inner p{ color:#8A8A8A; font-size:13px; margin:0; }
+.os-footer-contact{ color:var(--os-yellow); font-size:13px; font-weight:700; }
+.os-footer-contact:hover{ color:#fff; }
+
+/* ---------- modale "Demander une démo" ---------- */
+.os-modal-overlay{
+  position:fixed; inset:0; z-index:100; background:rgba(10,10,10,.6);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.os-modal-overlay.hidden{ display:none; }
+.os-modal-card{
+  position:relative; background:#fff; border-radius:var(--os-radius); padding:32px 30px;
+  max-width:440px; width:100%; max-height:90vh; overflow-y:auto;
+  box-shadow:0 30px 70px rgba(0,0,0,.35);
+}
+.os-modal-close{
+  position:absolute; top:16px; right:16px; width:30px; height:30px; border-radius:50%;
+  border:1px solid var(--os-border); background:#fff; color:var(--os-gray); font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+}
+.os-modal-close:hover{ border-color:var(--os-ink); color:var(--os-ink); }
+.os-modal-card h3{ margin:0 0 6px; font-size:20px; }
+.os-modal-sub{ color:var(--os-gray); font-size:14px; margin:0 0 22px; }
+.os-modal-card label{ display:block; font-size:13px; font-weight:700; color:var(--os-ink); margin:14px 0 6px; }
+.os-modal-card label:first-of-type{ margin-top:0; }
+.os-req{ color:var(--os-red); }
+.os-modal-card input, .os-modal-card textarea{
+  width:100%; font-family:inherit; font-size:14.5px; padding:11px 13px;
+  border:1px solid var(--os-border); border-radius:10px; color:var(--os-ink);
+  background:#fff; resize:vertical;
+}
+.os-modal-card input:focus, .os-modal-card textarea:focus{
+  outline:none; border-color:var(--os-yellow-dark); box-shadow:0 0 0 3px rgba(255,196,0,.18);
+}
+.os-modal-submit{ width:100%; justify-content:center; margin-top:22px; }
 
 @media (max-width:860px){
   .os-feature-grid{ grid-template-columns:repeat(2,1fr); }

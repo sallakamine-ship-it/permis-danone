@@ -38,7 +38,12 @@
 <header class="os-topbar">
   <div class="os-topbar-inner">
     {{ os_mark_compact() }}
-    <a href="/admin" class="os-topbar-link">Accès client →</a>
+    <nav class="os-topbar-nav">
+      <a href="#fonctionnalites" class="os-topbar-navlink">Fonctionnalités</a>
+      <a href="#contact" class="os-topbar-navlink">Contact</a>
+      <a href="/admin" class="os-topbar-link">Accès client →</a>
+      <button class="os-btn os-btn-primary os-btn-sm" onclick="openDemoModal()">Demander une démo</button>
+    </nav>
   </div>
 </header>
 
@@ -53,13 +58,14 @@
       plateforme pour la sécurité de tous vos chantiers.
     </p>
     <div class="os-hero-cta">
-      <a href="/admin"><button class="os-btn os-btn-primary">🔐 Accès client</button></a>
+      <button class="os-btn os-btn-primary" onclick="openDemoModal()">✉️ Demander une démo</button>
+      <a href="/admin"><button class="os-btn os-btn-ghost">🔐 Accès client</button></a>
       <a href="#soustraitants"><button class="os-btn os-btn-ghost">📱 Je suis sous-traitant</button></a>
     </div>
   </div>
 </section>
 
-<section class="os-section">
+<section class="os-section" id="fonctionnalites">
   <div class="os-section-inner">
     <h2 class="os-section-title">Ce que fait la plateforme</h2>
     <p class="os-section-sub">Le cœur d'Opsafe aujourd'hui : le permis de travail, du terrain jusqu'au registre.</p>
@@ -116,7 +122,7 @@
           Coordonnateurs SST et donneurs d'ordre : créez, éditez et fermez les
           permis, gérez les secteurs et consultez le registre complet du site.
         </p>
-        <a href="/admin"><button class="os-btn os-btn-dark">Se connecter</button></a>
+        <a href="/admin"><button class="os-btn os-btn-primary">Se connecter</button></a>
       </div>
       <div class="os-path-card os-path-card--contractor">
         <div class="os-path-icon">📷</div>
@@ -132,12 +138,76 @@
   </div>
 </section>
 
+<section class="os-section" id="contact">
+  <div class="os-section-inner os-contact-inner">
+    <div>
+      <h2 class="os-section-title">Une question, une démo ?</h2>
+      <p class="os-section-sub" style="margin-bottom:0">Parlons de votre chantier et de vos besoins de conformité SST.</p>
+    </div>
+    <div class="os-contact-actions">
+      <button class="os-btn os-btn-primary" onclick="openDemoModal()">✉️ Demander une démo</button>
+      <a href="mailto:sallak.amine@gmail.com" class="os-contact-email">sallak.amine@gmail.com</a>
+    </div>
+  </div>
+</section>
+
 <footer class="os-footer">
   <div class="os-footer-inner">
     {{ os_mark_compact() }}
     <p>© 2026 Opsafe &nbsp;·&nbsp; Plateforme de sécurité opérationnelle pour vos chantiers</p>
+    <a href="mailto:sallak.amine@gmail.com" class="os-footer-contact">✉️ sallak.amine@gmail.com</a>
   </div>
 </footer>
+
+<div id="demoModal" class="os-modal-overlay hidden">
+  <div class="os-modal-card">
+    <button type="button" class="os-modal-close" onclick="closeDemoModal()" aria-label="Fermer">✕</button>
+    <h3>Demander une démo</h3>
+    <p class="os-modal-sub">Décrivez-nous votre chantier — on vous répond rapidement.</p>
+    <form id="demoForm" onsubmit="return submitDemoForm(event)">
+      <label>Nom <span class="os-req">*</span></label>
+      <input type="text" id="demoNom" required>
+      <label>Entreprise <span class="os-req">*</span></label>
+      <input type="text" id="demoEntreprise" required>
+      <label>Courriel <span class="os-req">*</span></label>
+      <input type="email" id="demoCourriel" required>
+      <label>Message</label>
+      <textarea id="demoMessage" rows="4" placeholder="Nombre de chantiers, besoins particuliers, échéancier..."></textarea>
+      <button type="submit" class="os-btn os-btn-primary os-modal-submit">Envoyer la demande</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function openDemoModal(){
+  document.getElementById('demoModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeDemoModal(){
+  document.getElementById('demoModal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function submitDemoForm(e){
+  e.preventDefault();
+  const nom = document.getElementById('demoNom').value.trim();
+  const entreprise = document.getElementById('demoEntreprise').value.trim();
+  const courriel = document.getElementById('demoCourriel').value.trim();
+  const message = document.getElementById('demoMessage').value.trim();
+  const subject = encodeURIComponent(`Demande de démo Opsafe — ${entreprise || nom}`);
+  const body = encodeURIComponent(
+    `Nom : ${nom}\nEntreprise : ${entreprise}\nCourriel : ${courriel}\n\nMessage :\n${message || '(aucun message)'}`
+  );
+  window.location.href = `mailto:sallak.amine@gmail.com?subject=${subject}&body=${body}`;
+  closeDemoModal();
+  return false;
+}
+document.getElementById('demoModal').addEventListener('click', e=>{
+  if(e.target.id === 'demoModal') closeDemoModal();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape') closeDemoModal();
+});
+</script>
 
 </body>
 </html>
