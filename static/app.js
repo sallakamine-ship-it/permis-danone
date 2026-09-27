@@ -159,7 +159,7 @@ function show(v){
   const navBtn = document.getElementById('nav-'+v);
   if(navBtn) navBtn.classList.add('active');
   if(v==='registre'){ loadRegistre(1); }
-  if(v==='audit'){ /* section à venir */ }
+  if(v==='audit'){ loadAuditSectorSelects(); loadAudits(); }
   if(v==='secteurs'){ loadSecteurs(); }
   if(v==='users'){ loadUsers(); }
 }
@@ -533,6 +533,76 @@ async function uploadPhotos(){
   currentPermit = await api(`/api/permits/${currentPermit.id}`);
   renderDetail(currentPermit);
   toast('✅ Photo(s) ajoutée(s)');
+}
+
+// ---------- Audit : rapports importés par secteur ----------
+async function loadAuditSectorSelects(){
+  const sectors = await api('/api/sectors').catch(()=>[]);
+  const opts = sectors.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  const uploadSel = document.getElementById('auditSector');
+  const filterSel = document.getElementById('auditFilterSector');
+  if(uploadSel) uploadSel.innerHTML = opts;
+  if(filterSel) filterSel.innerHTML = '<option value="">Tous les secteurs</option>' + opts;
+}
+
+async function loadAudits(){
+  const sectorId = val('auditFilterSector');
+  const params = sectorId ? `?sector_id=${sectorId}` : '';
+  const audits = await api('/api/audits' + params).catch(()=>[]);
+  renderAuditsTable(audits);
+}
+
+function renderAuditsTable(audits){
+  const body = document.getElementById('auditBody');
+  if(!audits.length){
+    body.innerHTML = `<tr><td colspan="6"><div class="empty">Aucun rapport d'audit importé.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = audits.map(a=>`
+    <tr>
+      <td>${esc(a.sector_name)}</td>
+      <td>${esc(a.titre)||'—'}</td>
+      <td>${esc(a.date_audit)||'—'}</td>
+      <td>${esc(a.uploaded_by)||'—'}</td>
+      <td>${esc((a.uploaded_at||'').slice(0,10))}</td>
+      <td>
+        <a class="btn btn-secondary btn-sm" href="/api/audits/${a.id}/download" target="_blank">📄 Ouvrir</a>
+        <button class="btn btn-danger btn-sm" onclick="deleteAudit(${a.id})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function uploadAuditReport(){
+  const fileInput = document.getElementById('auditFile');
+  const sectorId = val('auditSector');
+  if(!sectorId){ toast('Choisis un secteur', true); return; }
+  if(!fileInput.files.length){ toast('Choisis un fichier', true); return; }
+  const fd = new FormData();
+  fd.append('file', fileInput.files[0]);
+  fd.append('sector_id', sectorId);
+  fd.append('titre', val('auditTitre'));
+  fd.append('date_audit', val('auditDate'));
+  try{
+    const res = await fetch('/api/audits', {method:'POST', credentials:'include', body:fd});
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.detail || 'Erreur');
+    }
+    fileInput.value = '';
+    document.getElementById('auditTitre').value = '';
+    document.getElementById('auditDate').value = '';
+    toast('✅ Rapport importé');
+    loadAudits();
+  }catch(e){
+    toast(e.message || 'Erreur lors de l\'import', true);
+  }
+}
+
+async function deleteAudit(auditId){
+  if(!confirm('Supprimer ce rapport d\'audit ?')) return;
+  await api(`/api/audits/${auditId}`, {method:'DELETE'});
+  toast('Rapport supprimé');
+  loadAudits();
 }
 
 async function deletePhoto(photoId){

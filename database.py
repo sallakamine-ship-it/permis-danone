@@ -119,9 +119,21 @@ def init_db():
                 uploaded_by TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS audits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sector_id INTEGER NOT NULL REFERENCES sectors(id) ON DELETE CASCADE,
+                filename TEXT NOT NULL,
+                original_name TEXT,
+                titre TEXT,
+                date_audit TEXT,
+                uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
+                uploaded_by TEXT
+            );
+
             CREATE INDEX IF NOT EXISTS idx_permits_num ON permits(num);
             CREATE INDEX IF NOT EXISTS idx_permits_sector ON permits(sector_id);
             CREATE INDEX IF NOT EXISTS idx_permits_statut ON permits(statut);
+            CREATE INDEX IF NOT EXISTS idx_audits_sector ON audits(sector_id);
             """
         )
         # Migration : ajoute la colonne "zone" (secteur du site, liste déroulante)

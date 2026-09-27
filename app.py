@@ -34,6 +34,8 @@ from database import init_db, db, row_to_dict
 BASE_DIR = os.path.dirname(__file__)
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+AUDIT_UPLOAD_DIR = os.path.join(UPLOAD_DIR, "audits")
+os.makedirs(AUDIT_UPLOAD_DIR, exist_ok=True)
 
 # Clé de signature des sessions. En production : variable d'environnement,
 # jamais codée en dur. Générée une fois ici pour que la démo fonctionne
@@ -606,6 +608,90 @@ async def delete_photo(photo_id: int, session=Depends(require_session)):
             if os.path.exists(path):
                 os.remove(path)
             conn.execute("DELETE FROM photos WHERE id = ?", (photo_id,))
+    return {"ok": True}
+
+
+# ===========================================================================
+# AUDITS — rapports d'audit importés, classés par secteur
+# ===========================================================================
+AUDIT_EXTS = (".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png")
+
+
+@app.get("/api/audits")
+async def list_audits(sector_id: Optional[int] = None, session=Depends(require_session)):
+    where = ""
+    params = []
+    if sector_id:
+        where = "WHERE a.sector_id = ?"
+        params.append(sector_id)
+    with db() as conn:
+        rows = conn.execute(
+            f"""SELECT a.*, s.name AS sector_name FROM audits a
+                JOIN sectors s ON s.id = a.sector_id
+                {where}
+                ORDER BY COALESCE(a.date_audit, a.uploaded_at) DESC, a.id DESC""",
+            params,
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/audits")
+async def upload_audit(
+    sector_id: int = Form(...),
+    titre: str = Form(""),
+    date_audit: str = Form(""),
+    file: UploadFile = File(...),
+    session=Depends(require_session),
+):
+    with db() as conn:
+        sector = conn.execute("SELECT id FROM sectors WHERE id = ?", (sector_id,)).fetchone()
+    if not sector:
+        raise HTTPException(status_code=404, detail="Secteur introuvable")
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in AUDIT_EXTS:
+        raise HTTPException(status_code=400, detail="Format de fichier non supporté (PDF, Word, Excel ou image)")
+    content = await file.read()
+    if len(content) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 25 Mo)")
+    filename = f"{sector_id}_{uuid.uuid4().hex[:10]}{ext}"
+    path = os.path.join(AUDIT_UPLOAD_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(content)
+    with db() as conn:
+        cur = conn.execute(
+            "INSERT INTO audits (sector_id, filename, original_name, titre, date_audit, uploaded_by) "
+            "VALUES (?,?,?,?,?,?)",
+            (sector_id, filename, file.filename, titre or None, date_audit or None, session["full_name"]),
+        )
+        audit_id = cur.lastrowid
+        row = conn.execute(
+            "SELECT a.*, s.name AS sector_name FROM audits a JOIN sectors s ON s.id = a.sector_id WHERE a.id = ?",
+            (audit_id,),
+        ).fetchone()
+    return dict(row)
+
+
+@app.get("/api/audits/{audit_id}/download")
+async def download_audit(audit_id: int, session=Depends(require_session)):
+    with db() as conn:
+        row = conn.execute("SELECT * FROM audits WHERE id = ?", (audit_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Rapport introuvable")
+    path = os.path.join(AUDIT_UPLOAD_DIR, row["filename"])
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Fichier introuvable")
+    return FileResponse(path, filename=row["original_name"] or row["filename"])
+
+
+@app.delete("/api/audits/{audit_id}")
+async def delete_audit(audit_id: int, session=Depends(require_session)):
+    with db() as conn:
+        row = conn.execute("SELECT * FROM audits WHERE id = ?", (audit_id,)).fetchone()
+        if row:
+            path = os.path.join(AUDIT_UPLOAD_DIR, row["filename"])
+            if os.path.exists(path):
+                os.remove(path)
+            conn.execute("DELETE FROM audits WHERE id = ?", (audit_id,))
     return {"ok": True}
 
 

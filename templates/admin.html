@@ -283,8 +283,43 @@
   <!-- ============ AUDIT ============ -->
   <div id="view-audit" class="view">
     <div class="card">
-      <div class="permis-head"><h1 style="font-size:18px">AUDIT</h1></div>
-      <div class="empty">Section en construction — dis-moi ce que tu veux y suivre (audits planifiés, checklist, résultat, secteur…) et je la bâtis.</div>
+      <div class="permis-head"><h1 style="font-size:18px">IMPORTER UN RAPPORT D'AUDIT</h1></div>
+      <div class="section">
+        <div class="grid2">
+          <div>
+            <label>Secteur</label>
+            <select id="auditSector"></select>
+          </div>
+          <div>
+            <label>Date de l'audit</label>
+            <input type="date" id="auditDate">
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label>Titre (optionnel)</label>
+          <input type="text" id="auditTitre" placeholder="ex. Audit trimestriel — Q3 2026">
+        </div>
+        <div style="margin-top:10px">
+          <label>Fichier du rapport</label><br>
+          <input type="file" id="auditFile" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+          <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="uploadAuditReport()">📤 Importer</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="permis-head"><h1 style="font-size:18px">RAPPORTS D'AUDIT PAR SECTEUR</h1></div>
+      <div class="tools">
+        <select id="auditFilterSector" onchange="loadAudits()"><option value="">Tous les secteurs</option></select>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Secteur</th><th>Titre</th><th>Date de l'audit</th><th>Déposé par</th><th>Déposé le</th><th></th>
+          </tr></thead>
+          <tbody id="auditBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
