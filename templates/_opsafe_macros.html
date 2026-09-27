@@ -7,24 +7,27 @@
 <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 {%- endmacro %}
 
-{% macro os_hex(light=False) -%}
-<svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  {% if light -%}
-  <path d="M32 17L24.5 4.01H9.5L2 17L9.5 29.99H24.5L32 17Z" stroke="#FFFFFF" stroke-width="1.6"/>
-  {%- else -%}
-  <path d="M32 17L24.5 4.01H9.5L2 17L9.5 29.99H24.5L32 17Z" fill="#0F2440"/>
-  {%- endif %}
-  <path d="M11 17.5l4.5 4.5L24 12" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+{# Anneau à arcs degradé — la marque Opsafe. Autoporteur en couleur : rendu
+   identique sur fond clair ou marine, pas de variante "light" nécessaire. #}
+{% macro os_ring(size=22) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 100 100" fill="none" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M88,50 A38 38 0 0 1 83.6,67.8" stroke="#4ade80" stroke-width="16"/>
+  <path d="M79.1,74.4 A38 38 0 0 1 56.6,87.4" stroke="#34c973" stroke-width="14"/>
+  <path d="M38.3,86.1 A38 38 0 0 1 14.3,63.0" stroke="#22b366" stroke-width="12"/>
+  <path d="M12.4,44.7 A38 38 0 0 1 31.0,17.1" stroke="#1b9857" stroke-width="10"/>
+  <path d="M48.7,12.0 A38 38 0 0 1 73.4,20.1" stroke="#0b4333" stroke-width="6"/>
+  <circle cx="84.2" cy="33.4" r="3.6" fill="#ffffff"/>
 </svg>
 {%- endmacro %}
 
-{% macro os_logo(size=28, light=False) -%}
+{# Lettrine intégrée : l'anneau tient lieu de "O" dans "Opsafe". #}
+{% macro os_logo(size=20, light=False) -%}
 <a href="/" class="os-logo">
-  <span class="os-logo-mark" style="width:{{ size }}px;height:{{ size }}px;">{{ os_hex(light) }}</span>
-  <span class="os-logo-word{{ ' os-logo-word--light' if light else '' }}">Opsafe</span>
+  <span class="os-logo-mark" style="width:{{ (size*1.05)|round|int }}px;height:{{ (size*1.05)|round|int }}px;">{{ os_ring((size*1.05)|round|int) }}</span>
+  <span class="os-logo-word{{ ' os-logo-word--light' if light else '' }}" style="font-size:{{ size }}px">psafe</span>
 </a>
 {%- endmacro %}
 
