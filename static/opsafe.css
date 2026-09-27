@@ -1,16 +1,17 @@
 /* ===========================================================================
    Opsafe — page d'accueil de la plateforme (indépendante du branding Danone).
-   Palette officielle Opsafe : noir + jaune (couleurs de sécurité), rouge en
-   accent ponctuel. Fichier dédié, sans dépendance à style.css : /admin et
-   /secteur/... gardent leur propre habillage Danone sans être affectés.
+   Palette officielle Opsafe : thème industriel bleu (navy + bleu acier).
+   Fichier dédié, sans dépendance à style.css : /admin et /secteur/...
+   gardent leur propre habillage Danone sans être affectés.
    =========================================================================== */
 
 :root{
-  --os-black:       #0A0A0A;
-  --os-black-soft:  #161616;
-  --os-black-line:  #2A2A2A;
-  --os-yellow:      #FFC400;
-  --os-yellow-dark: #E0A800;
+  --os-navy:        #0B2A4A;
+  --os-navy-soft:   #123A61;
+  --os-navy-line:   #1C4A73;
+  --os-blue:        #2E7DD6;
+  --os-blue-dark:   #1F63B3;
+  --os-blue-pale:   #E8F1FC;
   --os-red:         #E11D2A;
   --os-ink:         #0F172A;
   --os-gray:        #5B6B84;
@@ -37,9 +38,9 @@
 /* ---------- topbar ---------- */
 .os-topbar{
   position:sticky; top:0; z-index:20;
-  background:rgba(10,10,10,.94);
+  background:rgba(11,42,74,.94);
   backdrop-filter:blur(8px);
-  border-bottom:1px solid var(--os-black-line);
+  border-bottom:1px solid var(--os-navy-line);
 }
 .os-topbar-inner{
   max-width:1120px; margin:0 auto; padding:14px 24px;
@@ -53,10 +54,10 @@ a.os-topbar-navlink:hover{ color:#fff; }
 .os-topbar-actions{ display:flex; align-items:center; gap:12px; }
 a.os-topbar-link{
   color:#D8D8D8; font-size:14px; font-weight:600;
-  padding:8px 14px; border-radius:999px; border:1px solid var(--os-black-line);
+  padding:8px 14px; border-radius:999px; border:1px solid var(--os-navy-line);
   transition:border-color .15s, color .15s;
 }
-a.os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
+a.os-topbar-link:hover{ color:#fff; border-color:var(--os-blue); }
 @media (max-width:700px){ .os-topbar-nav{ display:none; } }
 @media (max-width:480px){ .os-topbar-link{ display:none; } }
 
@@ -79,16 +80,16 @@ a.os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
 /* ---------- hero ---------- */
 .os-hero{
   position:relative; overflow:hidden;
-  background:radial-gradient(1100px 520px at 12% -10%, #241F00 0%, transparent 60%),
-             radial-gradient(900px 480px at 92% 12%, #1C1C1C 0%, transparent 55%),
-             var(--os-black);
+  background:radial-gradient(1100px 520px at 12% -10%, var(--os-navy-soft) 0%, transparent 60%),
+             radial-gradient(900px 480px at 92% 12%, #163B5C 0%, transparent 55%),
+             var(--os-navy);
   padding:88px 24px 96px;
 }
 .os-hero-inner{ max-width:760px; margin:0 auto; text-align:center; position:relative; z-index:1; }
 .os-eyebrow{
   display:inline-block; font-size:13px; font-weight:700; letter-spacing:.06em;
-  text-transform:uppercase; color:var(--os-yellow);
-  background:rgba(255,196,0,.12); border:1px solid rgba(255,196,0,.4);
+  text-transform:uppercase; color:#7EB6F5;
+  background:rgba(46,125,214,.16); border:1px solid rgba(46,125,214,.45);
   padding:6px 14px; border-radius:999px; margin-bottom:22px;
 }
 .os-hero h1{
@@ -102,7 +103,7 @@ a.os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
 
 /* ---------- contact / démo ---------- */
 .os-contact-card{
-  margin-top:8px; background:var(--os-black); border-radius:var(--os-radius);
+  margin-top:8px; background:var(--os-navy); border-radius:var(--os-radius);
   padding:40px 32px; text-align:center;
 }
 .os-contact-card p{ color:#B9B9B9; font-size:15px; margin:0 auto 26px; max-width:460px; line-height:1.6; }
@@ -118,12 +119,12 @@ a.os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
   padding:14px 24px; border-radius:12px; border:1px solid transparent; transition:transform .12s, box-shadow .12s, background .12s;
 }
 .os-btn:active{ transform:translateY(1px); }
-.os-btn-primary{ background:var(--os-yellow); color:#141414; box-shadow:0 8px 24px rgba(255,196,0,.30); }
-.os-btn-primary:hover{ background:#FFD333; }
-.os-btn-ghost{ background:transparent; color:#fff; border-color:#3A3A3A; }
-.os-btn-ghost:hover{ border-color:#6E6E6E; }
+.os-btn-primary{ background:var(--os-blue); color:#fff; box-shadow:0 8px 24px rgba(46,125,214,.32); }
+.os-btn-primary:hover{ background:var(--os-blue-dark); }
+.os-btn-ghost{ background:transparent; color:#fff; border-color:#2E5578; }
+.os-btn-ghost:hover{ border-color:#5C87AC; }
 .os-btn-dark{ background:transparent; color:#fff; border:1.5px solid #fff; }
-.os-btn-dark:hover{ background:#fff; color:#0A0A0A; }
+.os-btn-dark:hover{ background:#fff; color:var(--os-navy); }
 .os-btn-sm{ padding:9px 16px; font-size:13.5px; }
 
 /* ---------- sections generales ---------- */
@@ -144,7 +145,7 @@ a.os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
 .os-feature-card:hover{ transform:translateY(-3px); box-shadow:0 16px 32px rgba(15,23,42,.07); }
 .os-feature-icon{
   width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center;
-  background:rgba(255,196,0,.16); font-size:20px; margin-bottom:14px;
+  background:var(--os-blue-pale); font-size:20px; margin-bottom:14px;
 }
 .os-feature-card h3{ font-size:16px; margin:0 0 8px; }
 .os-feature-card p{ font-size:14px; line-height:1.55; color:var(--os-gray); margin:0; }
@@ -167,7 +168,7 @@ a.os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
 .os-path-card{
   border-radius:var(--os-radius); padding:32px 28px; border:1px solid var(--os-border);
 }
-.os-path-card--staff{ background:var(--os-black); color:#fff; }
+.os-path-card--staff{ background:var(--os-navy); color:#fff; }
 .os-path-card--staff p{ color:#B9B9B9; }
 .os-path-card--contractor{ background:#fff; }
 .os-path-card--contractor p{ color:var(--os-gray); }
@@ -177,7 +178,7 @@ a.os-topbar-link:hover{ color:#fff; border-color:var(--os-yellow); }
 .os-path-note{ display:block; font-size:13px; color:var(--os-gray-light); margin-top:6px; }
 
 /* ---------- footer ---------- */
-.os-footer{ background:var(--os-black); border-top:1px solid var(--os-black-line); padding:34px 24px; }
+.os-footer{ background:var(--os-navy); border-top:1px solid var(--os-navy-line); padding:34px 24px; }
 .os-footer-inner{
   max-width:1120px; margin:0 auto; display:flex; align-items:center; justify-content:space-between;
   flex-wrap:wrap; gap:14px;
