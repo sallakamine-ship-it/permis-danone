@@ -35,6 +35,7 @@
     <nav id="mainNav">
       <button id="nav-form" onclick="show('form')">📝 Nouveau permis</button>
       <button id="nav-registre" class="active" onclick="show('registre')">📋 Registre</button>
+      <button id="nav-audit" onclick="show('audit')">🔍 Audit</button>
       <button id="nav-secteurs" onclick="show('secteurs')">🗺️ Secteurs &amp; QR</button>
       <button id="nav-users" onclick="show('users')" class="hidden">👤 Utilisateurs</button>
     </nav>
@@ -246,12 +247,11 @@
 
     <div class="section">
       <h2>Statut</h2>
-      <select id="f_statut" style="max-width:260px"><option value="Brouillon">Brouillon</option><option value="Actif" selected>Actif</option><option value="Fermé">Fermé</option></select>
+      <select id="f_statut" style="max-width:260px"><option value="Actif" selected>Actif</option><option value="Fermé">Fermé</option></select>
     </div>
 
     <div class="actions">
       <button class="btn btn-primary" id="saveBtn" onclick="savePermit()">💾 Enregistrer</button>
-      <button class="btn btn-secondary" onclick="resetForm()">🔄 Nouveau permis</button>
       <button class="btn btn-secondary hidden" id="printBtn" onclick="printCurrentPermit()">🖨️ Imprimer</button>
     </div>
   </div>
@@ -264,19 +264,27 @@
       <div class="permis-head"><h1 style="font-size:18px">REGISTRE DES PERMIS</h1></div>
       <div class="tools">
         <input type="text" id="search" placeholder="🔍 Rechercher…" oninput="debounceSearch()">
-        <select id="filterStatut" onchange="loadRegistre(1)"><option value="">Tous les statuts</option><option>Actif</option><option>Fermé</option><option>Brouillon</option></select>
+        <select id="filterStatut" onchange="loadRegistre(1)"><option value="">Tous les statuts</option><option>Actif</option><option>Fermé</option></select>
         <select id="filterSector" onchange="loadRegistre(1)"><option value="">Tous les secteurs</option></select>
       </div>
       <div style="overflow-x:auto">
         <table>
           <thead><tr>
-            <th>N°</th><th>Date</th><th>Entreprise</th><th>Exécutant</th><th>Secteur</th>
+            <th>N°</th><th>Date</th><th>Entreprise</th><th>Donneur d'ordre</th><th>Exécutant</th><th>Secteur</th>
             <th>Hauteur</th><th>Toit</th><th>À chaud</th><th>Statut</th><th></th>
           </tr></thead>
           <tbody id="registreBody"></tbody>
         </table>
       </div>
       <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <!-- ============ AUDIT ============ -->
+  <div id="view-audit" class="view">
+    <div class="card">
+      <div class="permis-head"><h1 style="font-size:18px">AUDIT</h1></div>
+      <div class="empty">Section en construction — dis-moi ce que tu veux y suivre (audits planifiés, checklist, résultat, secteur…) et je la bâtis.</div>
     </div>
   </div>
 

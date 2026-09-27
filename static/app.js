@@ -159,6 +159,7 @@ function show(v){
   const navBtn = document.getElementById('nav-'+v);
   if(navBtn) navBtn.classList.add('active');
   if(v==='registre'){ loadRegistre(1); }
+  if(v==='audit'){ /* section à venir */ }
   if(v==='secteurs'){ loadSecteurs(); }
   if(v==='users'){ loadUsers(); }
 }
@@ -390,15 +391,15 @@ async function refreshSectorNamesCache(){
 function renderRegistreTable(permits){
   const body = document.getElementById('registreBody');
   if(!permits.length){
-    body.innerHTML = `<tr><td colspan="10"><div class="empty">Aucun permis trouvé.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="11"><div class="empty">Aucun permis trouvé.</div></td></tr>`;
     return;
   }
   body.innerHTML = permits.map(p=>{
-    const sb = {'Actif':'b-actif','Fermé':'b-ferme','Brouillon':'b-brouillon'}[p.statut]||'b-ferme';
+    const sb = {'Actif':'b-actif','Fermé':'b-ferme'}[p.statut]||'b-ferme';
     const sectorName = sectorNamesCache[p.sector_id] || '—';
     return `<tr style="cursor:pointer" onclick="openDetail(${p.id})">
       <td><b>${esc(p.num)}</b></td><td>${esc((p.created_at||'').slice(0,10))}</td>
-      <td>${esc(p.entreprise)||'—'}</td><td>${esc(p.executant)}</td><td>${esc(sectorName)}</td>
+      <td>${esc(p.entreprise)||'—'}</td><td>${esc(p.donneur)||'—'}</td><td>${esc(p.executant)}</td><td>${esc(sectorName)}</td>
       <td>${p.height_work?'<span class="badge b-hauteur">🏗️ Oui</span>':'—'}</td>
       <td>${p.roof_work?'<span class="badge b-toit">🏠 Oui</span>':'—'}</td>
       <td>${p.hot_work?'<span class="badge b-hot">🔥 Oui</span>':'—'}</td>
