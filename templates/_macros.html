@@ -1,0 +1,32 @@
+{# Marque Danone — repli automatique sur une marque textuelle stylisée si les
+   fichiers image ne sont pas présents dans static/img/ (voir LISEZMOI.md). #}
+
+{% macro brand_mark_compact(size='34px') -%}
+{# Icône (rognée) + texte "DANONE" côte à côte — pour les barres horizontales
+   étroites (en-têtes, nav). Le mot "DANONE" s'affiche toujours ; seule
+   l'icône bascule entre l'image réelle et le repli étoilé. #}
+<span class="brand-mark brand-mark--compact">
+  <span class="brand-mark-icon-slot" style="width:{{ size }};height:{{ size }}">
+    <img src="/static/img/logo-danone-icon.png" alt="" class="brand-mark-icon"
+         style="display:none;height:{{ size }}"
+         onload="this.style.display='inline-block'; this.nextElementSibling.style.display='none'"
+         onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'">
+    <span class="star" style="width:{{ size }};height:{{ size }};font-size:calc({{ size }} * 0.5)">★</span>
+  </span>
+  <span class="brand-mark-word" style="font-size:calc({{ size }} * 0.62)">DANONE</span>
+</span>
+{%- endmacro %}
+
+{% macro brand_mark_full(width='170px') -%}
+{# Lockup officiel complet (icône + mot-symbole + signature), pour les
+   emplacements avec assez d'espace vertical (écran de connexion, pied de page). #}
+<span class="brand-mark brand-mark--full">
+  <img src="/static/img/logo-danone.png" alt="Danone" class="brand-mark-full-img"
+       style="display:none;width:{{ width }}"
+       onload="this.style.display='inline-block'; this.nextElementSibling.style.display='none'"
+       onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex'">
+  <span class="brand-mark-fallback" style="display:inline-flex;gap:10px">
+    <span class="star" style="width:calc({{ width }} * 0.22);height:calc({{ width }} * 0.22);font-size:calc({{ width }} * 0.11)">★</span><span class="wordmark" style="font-size:calc({{ width }} * 0.16)">DANONE</span>
+  </span>
+</span>
+{%- endmacro %}

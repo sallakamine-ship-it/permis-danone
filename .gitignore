@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+permis.db
+.secret_key
+uploads/

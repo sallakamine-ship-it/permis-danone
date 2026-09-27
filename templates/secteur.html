@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Permis de travail — {{ sector.name }} — Danone</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{% from "_macros.html" import brand_mark_compact %}
+<div class="app" style="max-width:600px">
+  <header class="top" style="justify-content:center">
+    <div class="logo">{{ brand_mark_compact('34px') }}</div>
+  </header>
+
+  <div class="card">
+    <div class="permis-head">
+      <div>
+        <h1 style="font-size:18px">CONSULTER MON PERMIS</h1>
+        <div class="ref">Secteur : {{ sector.name }}</div>
+      </div>
+    </div>
+
+    <div id="searchView" class="section">
+      <p class="note" style="margin-bottom:16px">
+        Entrez le numéro de permis qui vous a été communiqué par le donneur d'ordre Danone,
+        ainsi que le nom de votre entreprise, pour consulter les conditions de votre permis de travail.
+      </p>
+      <label>Numéro de permis <span class="req">*</span></label>
+      <input type="text" id="lookupNum" placeholder="ex. 00525" autocomplete="off">
+      <div style="height:10px"></div>
+      <label>Nom de votre entreprise <span class="req">*</span></label>
+      <input type="text" id="lookupEntreprise" placeholder="ex. Toitures ABC inc." autocomplete="off">
+      <div id="lookupError" class="login-error"></div>
+      <button class="btn btn-primary login-btn" onclick="lookupPermit()">🔍 Consulter mon permis</button>
+    </div>
+
+    <div id="resultView" class="hidden"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SECTOR_SLUG = {{ sector.slug|tojson }};
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function badge(cls, text){ return `<span class="badge ${cls}">${text}</span>`; }
+
+function riskList(title, items){
+  if(!items || !items.length) return '';
+  return `<div style="margin-top:12px"><b style="font-size:12px;text-transform:uppercase;color:var(--gris)">${title}</b>
+    <ul style="margin:6px 0 0 18px;font-size:14px;line-height:1.7">
+      ${items.map(i=>`<li>${esc(i)}</li>`).join('')}
+    </ul></div>`;
+}
+
+async function lookupPermit(){
+  const num = document.getElementById('lookupNum').value.trim();
+  const entreprise = document.getElementById('lookupEntreprise').value.trim();
+  const err = document.getElementById('lookupError');
+  err.classList.remove('show');
+  if(!num || !entreprise){
+    err.textContent = 'Le numéro de permis et le nom de l\'entreprise sont requis.';
+    err.classList.add('show');
+    return;
+  }
+  try{
+    const res = await fetch(`/api/public/lookup?num=${encodeURIComponent(num)}&entreprise=${encodeURIComponent(entreprise)}&sector_slug=${encodeURIComponent(SECTOR_SLUG)}`);
+    if(!res.ok){
+      const data = await res.json().catch(()=>({detail:'Permis introuvable.'}));
+      err.textContent = data.detail || 'Permis introuvable.';
+      err.classList.add('show');
+      return;
+    }
+    const p = await res.json();
+    renderResult(p);
+  }catch(e){
+    err.textContent = 'Erreur de connexion au serveur. Réessayez.';
+    err.classList.add('show');
+  }
+}
+
+function renderResult(p){
+  document.getElementById('searchView').classList.add('hidden');
+  const rv = document.getElementById('resultView');
+  rv.classList.remove('hidden');
+
+  const statutBadge = {'Actif':'b-actif','Fermé':'b-ferme','Brouillon':'b-brouillon'}[p.statut]||'b-ferme';
+
+  let html = `
+    <div class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="num" style="display:inline-block">${esc(p.num)}</div>
+        ${badge(statutBadge, p.statut)}
+      </div>
+      <p><b>Donneur d'ordre :</b> ${esc(p.donneur)}</p>
+      <p><b>Entreprise :</b> ${esc(p.entreprise)}</p>
+      <p><b>Exécutant :</b> ${esc(p.executant)}</p>
+      <p style="margin-top:10px"><b>Description :</b><br>${esc(p.description)}</p>
+      <p style="margin-top:10px"><b>Lieux :</b><br>${esc(p.lieux)}</p>
+      ${p.zone ? `<p style="margin-top:10px"><b>Secteur (zone du site) :</b><br>${esc(p.zone)}</p>` : ''}
+      <p style="margin-top:10px"><b>Période :</b> ${esc(p.date_debut)||'—'} au ${esc(p.date_fin)||'—'}</p>
+    </div>`;
+
+  if(p.statut === 'Fermé'){
+    html += `<div class="section" style="background:#f5f5f5">
+      <p style="color:var(--rouge);font-weight:700">⚠️ Ce permis est fermé. Le travail ne doit pas débuter ou se poursuivre sous ce permis.</p>
+    </div>`;
+  }
+
+  html += `<div class="section">
+    <h2>Risques identifiés</h2>
+    ${riskList('A · Procédures', p.risques_a)}
+    ${riskList('B · Comportements', p.risques_b)}
+    ${riskList('C · Zone critique', p.risques_c)}
+  </div>`;
+
+  if(p.height_work){
+    html += `<div class="section" style="background:#e8f2fc">
+      <h2 style="background:var(--bleu)">🏗️ Travail en hauteur</h2>
+      <p><b>Moyen d'accès :</b> ${esc(p.height_acces)||'—'} &nbsp; <b>Hauteur :</b> ${esc(p.height_m)||'—'} m</p>
+      <p><b>Plan de sauvetage :</b> ${esc(p.height_sauvetage)||'—'} &nbsp; <b>Vigie :</b> ${esc(p.height_vigie)||'—'}</p>
+      ${riskList('Vérifications', p.risques_hauteur)}
+    </div>`;
+  }
+  if(p.bonbonne_work){
+    html += `<div class="section" style="background:#fff8ea">
+      <h2 style="background:var(--orange)">🛢️ Bonbonnes de gaz en hauteur</h2>
+      <p><b>Type de gaz :</b> ${esc(p.bonbonne_type)||'—'}</p>
+      ${riskList('Vérifications', p.risques_bonbonne)}
+    </div>`;
+  }
+  if(p.roof_work){
+    html += `<div class="section" style="background:#f1edfa">
+      <h2 style="background:var(--violet)">🏠 Travail au toit</h2>
+      <p><b>Type de toit :</b> ${esc(p.roof_type)||'—'} &nbsp; <b>Résistance vérifiée :</b> ${esc(p.roof_resistance)||'—'}</p>
+      <p><b>Périmètre/rives protégés :</b> ${esc(p.roof_perimetre)||'—'}</p>
+      ${riskList('Vérifications', p.risques_toit)}
+    </div>`;
+  }
+  if(p.hot_work){
+    html += `<div class="section" style="background:#ffebee">
+      <h2 style="background:var(--rouge)">🔥 Travail à chaud</h2>
+      <p><b>Nature :</b> ${esc(p.hot_nature)||'—'}</p>
+      <p><b>Heures :</b> ${esc(p.hot_debut)||'—'} à ${esc(p.hot_fin)||'—'} &nbsp; <b>Surveillance :</b> ${esc(p.hot_surv)||'—'}</p>
+      <p><b>Extincteur # :</b> ${esc(p.hot_ext)||'—'}</p>
+      ${riskList('Précautions', p.risques_hot)}
+    </div>`;
+  }
+
+  if(p.photos && p.photos.length){
+    html += `<div class="section">
+      <h2>Photos du chantier</h2>
+      <div class="photo-grid">
+        ${p.photos.map(url=>`<div class="photo-thumb"><img src="${url}"></div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  html += `<div class="actions">
+    <button class="btn btn-secondary" onclick="location.reload()">🔄 Consulter un autre permis</button>
+    <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimer</button>
+  </div>`;
+
+  rv.innerHTML = html;
+}
+
+document.getElementById('lookupEntreprise').addEventListener('keydown', e=>{ if(e.key==='Enter') lookupPermit(); });
+</script>
+</body>
+</html>

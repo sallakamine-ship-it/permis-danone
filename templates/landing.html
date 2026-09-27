@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Permis de travail de chantier — Danone Boucherville</title>
+<meta name="description" content="Plateforme numérique de gestion des permis de travail de chantier — Danone Boucherville.">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="landing-body">
+{% from "_macros.html" import brand_mark_compact %}
+
+<header class="lp-topbar">
+  <div class="lp-topbar-inner">
+    {{ brand_mark_compact('30px') }}
+    <a href="/admin" class="lp-topbar-link">Accès personnel Danone →</a>
+  </div>
+</header>
+
+<section class="lp-hero">
+  <div class="lp-hero-inner">
+    <span class="lp-eyebrow">Site de Boucherville, Québec</span>
+    <h1>Permis de travail de chantier,<br>numérique et sécurisé</h1>
+    <p class="lp-hero-sub">
+      Le registre centralisé des permis de travail du site — création et suivi par
+      le personnel Danone, consultation instantanée pour les sous-traitants par
+      simple scan du QR code de leur secteur, sans compte à créer.
+    </p>
+    <div class="lp-hero-cta">
+      <a href="/admin"><button class="btn btn-primary lp-btn-lg">🔐 Accès personnel Danone</button></a>
+      <a href="#soustraitants"><button class="btn btn-secondary lp-btn-lg">📱 Je suis sous-traitant</button></a>
+    </div>
+  </div>
+</section>
+
+<section class="lp-features">
+  <div class="lp-section-inner">
+    <h2 class="lp-section-title">Ce que fait la plateforme</h2>
+    <div class="lp-feature-grid">
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">🔒</div>
+        <h3>Comptes sécurisés</h3>
+        <p>Mots de passe chiffrés et sessions protégées pour le personnel Danone. Aucune donnée en clair.</p>
+      </div>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">📋</div>
+        <h3>Registre centralisé</h3>
+        <p>Tous les permis actifs et fermés au même endroit, avec recherche et filtres par secteur ou statut.</p>
+      </div>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">📱</div>
+        <h3>QR code par secteur</h3>
+        <p>Chaque zone de travail a son propre code. Le sous-traitant consulte son permis sans créer de compte.</p>
+      </div>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">✍️</div>
+        <h3>Fermeture à deux signatures</h3>
+        <p>Signature électronique du donneur d'ordre et de l'exécutant requise pour fermer officiellement un permis.</p>
+      </div>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">⏱️</div>
+        <h3>Suivi du cycle de vie</h3>
+        <p>Historique horodaté de chaque changement de statut, et fermeture automatique à l'échéance.</p>
+      </div>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">📸</div>
+        <h3>Preuves visuelles</h3>
+        <p>Photos du chantier jointes directement au permis, consultables par tous les intervenants autorisés.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="lp-paths" id="soustraitants">
+  <div class="lp-section-inner">
+    <h2 class="lp-section-title">Deux façons d'accéder à la plateforme</h2>
+    <div class="lp-path-grid">
+      <div class="lp-path-card lp-path-card--staff">
+        <div class="lp-path-icon">🦺</div>
+        <h3>Personnel Danone</h3>
+        <p>
+          Coordonnateurs SST et donneurs d'ordre : créez, éditez et fermez les
+          permis, gérez les secteurs et consultez le registre complet du site.
+        </p>
+        <a href="/admin"><button class="btn btn-primary">Se connecter</button></a>
+      </div>
+      <div class="lp-path-card lp-path-card--contractor">
+        <div class="lp-path-icon">📷</div>
+        <h3>Sous-traitants</h3>
+        <p>
+          Aucun compte requis. Scannez le QR code affiché dans votre secteur de
+          travail, entrez le numéro de permis et le nom de votre entreprise pour
+          consulter les conditions de votre permis.
+        </p>
+        <span class="lp-path-note">Disponible sur place, via le QR code de votre secteur</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="lp-footer">
+  <div class="lp-footer-inner">
+    {{ brand_mark_compact('22px') }}
+    <p>Site Danone — Boucherville, Québec &nbsp;·&nbsp; Processus SST interne, réf. IND-ING-RAQ-001</p>
+  </div>
+</footer>
+
+</body>
+</html>

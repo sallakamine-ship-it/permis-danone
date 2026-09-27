@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Permis de Travail de Chantier — Danone</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{% from "_macros.html" import brand_mark_compact, brand_mark_full %}
+
+<!-- ============ ÉCRAN DE CONNEXION ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-band">
+      <div class="logo-big">{{ brand_mark_full('180px') }}</div>
+      <div class="sous">Permis de travail de chantier — Accès administrateur</div>
+    </div>
+    <div class="login-body">
+      <label>Nom d'utilisateur</label>
+      <input type="text" id="loginUser" placeholder="ex. admin" autocomplete="username">
+      <label>Mot de passe</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+      <div class="login-error" id="loginError">Nom d'utilisateur ou mot de passe incorrect.</div>
+      <button class="btn btn-primary login-btn" onclick="tryLogin()">🔐 Se connecter</button>
+      <div class="demo-box">
+        <b>Comptes de démonstration :</b><br>
+        Admin — <code>admin</code> / <code>Danone2026!</code><br>
+        Donneur d'ordre — <code>coordinateur</code> / <code>Sst2026!</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APPLICATION ============ -->
+<div class="app" id="appScreen" style="display:none">
+
+  <header class="top">
+    <div class="logo">{{ brand_mark_compact('34px') }}</div>
+    <nav id="mainNav">
+      <button id="nav-form" onclick="show('form')">📝 Nouveau permis</button>
+      <button id="nav-registre" class="active" onclick="show('registre')">📋 Registre</button>
+      <button id="nav-secteurs" onclick="show('secteurs')">🗺️ Secteurs &amp; QR</button>
+      <button id="nav-users" onclick="show('users')" class="hidden">👤 Utilisateurs</button>
+    </nav>
+    <div class="user-chip">
+      <div class="avatar" id="userAvatar">?</div>
+      <div>
+        <span id="userNameDisplay">—</span>
+        <span class="role-tag" id="userRoleDisplay">—</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">🚪 Déconnexion</button>
+    </div>
+  </header>
+
+  <!-- ============ FORMULAIRE ============ -->
+  <div id="view-form" class="view">
+  <div class="card">
+    <div class="permis-head">
+      <div>
+        <h1 id="formTitle">PERMIS DE TRAVAIL DE CHANTIER</h1>
+        <div class="ref">IND-ING-RAQ-001 · Version digitale</div>
+      </div>
+      <div class="num" id="numPermisDisplay">Nouveau</div>
+    </div>
+
+    <div class="section">
+      <h2>Secteur</h2>
+      <select id="f_sector_id"><option value="">— Sélectionner un secteur —</option></select>
+    </div>
+
+    <div class="section">
+      <h2>Donneur d'ordre & Entreprise</h2>
+      <div class="grid2">
+        <div>
+          <label>Donneur d'ordre Danone <span class="req">*</span></label>
+          <input type="text" id="f_donneur">
+          <div style="height:8px"></div>
+          <label>Téléphone</label>
+          <input type="tel" id="f_donneur_tel">
+        </div>
+        <div>
+          <label>Entreprise extérieure <span class="req">*</span></label>
+          <input type="text" id="f_entreprise" placeholder="Utilisé par le sous-traitant pour consulter son permis">
+          <div style="height:8px"></div>
+          <label>Nom de l'exécutant <span class="req">*</span></label>
+          <input type="text" id="f_executant">
+          <div style="height:8px"></div>
+          <label>Téléphone</label>
+          <input type="tel" id="f_executant_tel">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Description & Lieux</h2>
+      <div class="grid2">
+        <div><label>Description des travaux <span class="req">*</span></label><textarea id="f_description"></textarea></div>
+        <div><label>Lieux <span class="req">*</span></label><textarea id="f_lieux"></textarea></div>
+      </div>
+      <div style="margin-top:12px">
+        <label>Secteur (zone du site)</label>
+        <select id="f_zone">
+          <option value="">— Sélectionner —</option>
+          <option>CIP Thermisé / Thermized CIP</option>
+          <option>CIP central (vrac et pasteurisé) / Central CIP (Bulk and pateurised)</option>
+          <option>Cuves (80 à 83) / Tanks (80 to 83)</option>
+          <option>HTST (4/5/Sterilo 1)</option>
+          <option>MIF</option>
+          <option>Process 20T</option>
+          <option>Process 40T</option>
+          <option>Process 45T</option>
+          <option>Process vegetal</option>
+          <option>Reception lait (ancienne) / Milk reception (Old)</option>
+          <option>Reception lait (nouvelle) / Milk reception (New)</option>
+          <option>Salle de contrôle</option>
+          <option>Salle de mélange / Mixing room</option>
+          <option>Salle de poudrage (végétal) / powder room (Vegetal)</option>
+          <option>Salles de poudrage (brassé) / Powder room (Brewed)</option>
+          <option>Sterilo 2</option>
+          <option>Tour à Charbon</option>
+          <option>UF/Eau micro filtré</option>
+        </select>
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        <div><label>Date début</label><input type="date" id="f_date_debut"></div>
+        <div><label>Date fin</label><input type="date" id="f_date_fin"></div>
+      </div>
+    </div>
+
+    <div class="section"><h2>A · Procédures et risques à considérer</h2>
+      <div class="risques"><div class="risques-grid" id="risquesA"></div></div>
+    </div>
+    <div class="section"><h2>B · Comportements à considérer</h2>
+      <div class="risques"><div class="risques-grid" id="risquesB"></div></div>
+    </div>
+    <div class="section"><h2>C · Zone critique — Sécurité alimentaire</h2>
+      <div class="risques"><div class="risques-grid" id="risquesC"></div></div>
+      <div class="grid2" style="margin-top:12px">
+        <div><label>Conformité</label>
+          <select id="f_zone_conforme"><option value="">—</option><option>Conforme</option><option>Non-conforme</option></select>
+        </div>
+        <div><label>Commentaires</label><input type="text" id="f_zone_comm"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Travail en hauteur</h2>
+      <div class="hot-toggle" style="background:#e3f2fd;border-color:var(--bleu)">
+        <label class="switch"><input type="checkbox" id="f_height_work" onchange="toggleSection('height')"><span class="slider" style="background:#ccc"></span></label>
+        <div><strong>Travail en hauteur requis ?</strong><br><span style="font-size:13px;color:#666">Échafaudage, nacelle, échelle, chute > 3 m…</span></div>
+      </div>
+      <div id="heightSection" class="hidden">
+        <div class="risques" style="margin-top:12px;background:#e8f2fc;border-color:var(--bleu)"><div class="risques-grid" id="risquesHauteur"></div></div>
+        <div class="grid3" style="margin-top:12px">
+          <div><label>Moyen d'accès</label>
+            <select id="f_height_acces"><option value="">—</option><option>Échafaudage</option><option>Nacelle / plateforme élévatrice</option><option>Échelle</option><option>Ligne de vie / harnais</option><option>Autre</option></select>
+          </div>
+          <div><label>Hauteur estimée (m)</label><input type="number" id="f_height_m" min="0" step="0.5"></div>
+          <div><label>Plan de sauvetage <span class="req">*</span></label>
+            <select id="f_height_sauvetage"><option value="">—</option><option>Oui, en place</option><option>Non applicable</option></select>
+          </div>
+        </div>
+        <div style="margin-top:12px"><label>Surveillant / vigie désigné <span class="req">*</span></label><input type="text" id="f_height_vigie"></div>
+
+        <div class="hot-toggle" style="background:#fff3e0;border-color:var(--orange);margin-top:14px">
+          <label class="switch"><input type="checkbox" id="f_bonbonne_work" onchange="toggleSection('bonbonne')"><span class="slider"></span></label>
+          <div><strong>Bonbonne(s) de gaz transportée(s) en hauteur ?</strong><br><span style="font-size:13px;color:#666">Oxygène, acétylène, propane</span></div>
+        </div>
+        <div id="bonbonneSection" class="hidden">
+          <div class="risques" style="margin-top:12px;background:#fff8ea;border-color:var(--orange)"><div class="risques-grid" id="risquesBonbonne"></div></div>
+          <div class="grid3" style="margin-top:12px">
+            <div><label>Type de gaz</label>
+              <select id="f_bonbonne_type"><option value="">—</option><option>Oxygène</option><option>Acétylène</option><option>Propane</option><option>Oxygène + Acétylène</option><option>Autre</option></select>
+            </div>
+            <div><label>Nombre de bonbonnes</label><input type="number" id="f_bonbonne_nombre" min="0" step="1"></div>
+            <div><label>Système de levage</label>
+              <select id="f_bonbonne_levage"><option value="">—</option><option>Chariot/support dédié</option><option>Panier de levage certifié</option><option>Treuil avec élingue certifiée</option><option>Autre</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Travail au toit</h2>
+      <div class="hot-toggle" style="background:#ede7f6;border-color:var(--violet)">
+        <label class="switch"><input type="checkbox" id="f_roof_work" onchange="toggleSection('roof')"><span class="slider" style="background:#ccc"></span></label>
+        <div><strong>Travail au toit requis ?</strong><br><span style="font-size:13px;color:#666">Ouvertures/lucarnes, rives, résistance du toit…</span></div>
+      </div>
+      <div id="roofSection" class="hidden">
+        <div class="risques" style="margin-top:12px;background:#f1edfa;border-color:var(--violet)"><div class="risques-grid" id="risquesToit"></div></div>
+        <div class="grid3" style="margin-top:12px">
+          <div><label>Type de toit</label>
+            <select id="f_roof_type"><option value="">—</option><option>Toit plat</option><option>Toit en pente</option><option>Toiture avec lucarnes/tuiles</option><option>Autre</option></select>
+          </div>
+          <div><label>Résistance vérifiée</label>
+            <select id="f_roof_resistance"><option value="">—</option><option>Oui, confirmée</option><option>Non applicable</option></select>
+          </div>
+          <div><label>Périmètre/rives protégés</label>
+            <select id="f_roof_perimetre"><option value="">—</option><option>Oui</option><option>Non</option></select>
+          </div>
+        </div>
+        <div style="margin-top:12px"><label>Surveillant / vigie désigné (toit) <span class="req">*</span></label><input type="text" id="f_roof_vigie"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Permis de travail à chaud</h2>
+      <div class="hot-toggle">
+        <label class="switch"><input type="checkbox" id="f_hot_work" onchange="toggleSection('hot')"><span class="slider"></span></label>
+        <div><strong>Travail à chaud requis ?</strong><br><span style="font-size:13px;color:#666">Brasage, découpage, meulage, soudage, perçage…</span></div>
+      </div>
+      <div id="hotSection" class="hidden">
+        <div class="risques" style="margin-top:12px"><div class="risques-grid" id="risquesHot"></div></div>
+        <div class="grid3" style="margin-top:12px">
+          <div><label>Nature du travail à chaud</label><input type="text" id="f_hot_nature"></div>
+          <div><label>Heure début</label><input type="time" id="f_hot_debut"></div>
+          <div><label>Heure fin</label><input type="time" id="f_hot_fin"></div>
+        </div>
+        <div class="grid2" style="margin-top:12px">
+          <div><label>Surveillance incendie après travaux <span class="req">*</span></label>
+            <select id="f_hot_surv"><option value="">—</option><option>60 min</option><option>120 min (2h)</option><option>180 min (3h)</option><option>240 min (4h)</option></select>
+          </div>
+          <div><label>Extincteur #</label><input type="text" id="f_hot_ext"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Statut</h2>
+      <select id="f_statut" style="max-width:260px"><option value="Brouillon">Brouillon</option><option value="Actif" selected>Actif</option><option value="Fermé">Fermé</option></select>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="saveBtn" onclick="savePermit()">💾 Enregistrer</button>
+      <button class="btn btn-secondary" onclick="resetForm()">🔄 Nouveau permis</button>
+      <button class="btn btn-secondary hidden" id="printBtn" onclick="printCurrentPermit()">🖨️ Imprimer</button>
+    </div>
+  </div>
+  </div>
+
+  <!-- ============ REGISTRE ============ -->
+  <div id="view-registre" class="view active">
+    <div class="stat-row" id="stats"></div>
+    <div class="card">
+      <div class="permis-head"><h1 style="font-size:18px">REGISTRE DES PERMIS</h1></div>
+      <div class="tools">
+        <input type="text" id="search" placeholder="🔍 Rechercher…" oninput="debounceSearch()">
+        <select id="filterStatut" onchange="loadRegistre(1)"><option value="">Tous les statuts</option><option>Actif</option><option>Fermé</option><option>Brouillon</option></select>
+        <select id="filterSector" onchange="loadRegistre(1)"><option value="">Tous les secteurs</option></select>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>N°</th><th>Date</th><th>Entreprise</th><th>Exécutant</th><th>Secteur</th>
+            <th>Hauteur</th><th>Toit</th><th>À chaud</th><th>Statut</th><th></th>
+          </tr></thead>
+          <tbody id="registreBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <!-- ============ DÉTAIL / MODIFICATION PERMIS ============ -->
+  <div id="view-detail" class="view">
+    <div class="card">
+      <div class="permis-head">
+        <h1 id="detailNum" style="font-size:18px"></h1>
+        <button class="btn btn-secondary btn-sm" onclick="show('registre')">← Retour au registre</button>
+      </div>
+      <div class="section" id="detailContent"></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="editBtn" onclick="editCurrentPermit()">✏️ Réviser</button>
+        <button class="btn btn-secondary" onclick="printCurrentPermit()">🖨️ Imprimer</button>
+        <button class="btn btn-secondary" id="closeBtn" onclick="openCloseModal()">✅ Fermer le permis (signatures)</button>
+        <button class="btn btn-danger" id="deleteBtn" onclick="deleteCurrentPermit()">🗑️ Supprimer</button>
+      </div>
+    </div>
+
+    <div class="card" id="photoCard">
+      <div class="permis-head"><h1 style="font-size:16px">Photos du chantier</h1></div>
+      <div class="section">
+        <input type="file" id="photoInput" accept="image/*" multiple>
+        <button class="btn btn-secondary btn-sm" style="margin-left:8px" onclick="uploadPhotos()">📷 Ajouter</button>
+        <div class="photo-grid" id="photoGrid"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="permis-head"><h1 style="font-size:16px">Historique des statuts</h1></div>
+      <div class="section" id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- ============ SECTEURS & QR ============ -->
+  <div id="view-secteurs" class="view">
+    <div class="card">
+      <div class="permis-head"><h1 style="font-size:18px">SECTEURS &amp; CODES QR</h1></div>
+      <div class="add-user-row" style="grid-template-columns:1fr auto">
+        <div><label>Nom du secteur</label><input type="text" id="newSectorName" placeholder="ex. Entrepôt B, Toiture aile est…"></div>
+        <button class="btn btn-primary" onclick="addSector()">➕ Créer</button>
+      </div>
+      <div id="sectorsList"></div>
+    </div>
+  </div>
+
+  <!-- ============ UTILISATEURS (admin) ============ -->
+  <div id="view-users" class="view">
+    <div class="card">
+      <div class="permis-head"><h1 style="font-size:18px">GESTION DES UTILISATEURS</h1></div>
+      <div class="add-user-row">
+        <div><label>Nom d'utilisateur</label><input type="text" id="newUserName" placeholder="prenom.nom"></div>
+        <div><label>Nom complet</label><input type="text" id="newUserFull" placeholder="Prénom Nom"></div>
+        <div><label>Mot de passe</label><input type="text" id="newUserPass" placeholder="Mot de passe"></div>
+        <div><label>Rôle</label>
+          <select id="newUserRole"><option value="donneur">Donneur d'ordre</option><option value="admin">Administrateur</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="addUser()">➕ Ajouter</button>
+      </div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Utilisateur</th><th>Nom complet</th><th>Rôle</th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============ MODALE FERMETURE (signatures) ============ -->
+<div id="closeModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;display:flex;align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:520px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="permis-head"><h1 style="font-size:16px">Fermeture officielle du permis</h1></div>
+    <div class="section">
+      <p class="note" style="margin-bottom:14px">Les deux signatures sont requises pour fermer officiellement le permis.</p>
+      <div class="sig-block">
+        <h4>Signature — Donneur d'ordre Danone</h4>
+        <canvas class="sig-pad" id="sigDonneur"></canvas>
+        <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="clearSig('sigDonneur')">Effacer</button>
+      </div>
+      <div class="sig-block">
+        <h4>Signature — Exécutant</h4>
+        <canvas class="sig-pad" id="sigExecutant"></canvas>
+        <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="clearSig('sigExecutant')">Effacer</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="confirmClose()">✅ Confirmer la fermeture</button>
+      <button class="btn btn-secondary" onclick="closeCloseModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
