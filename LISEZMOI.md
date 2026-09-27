@@ -20,14 +20,24 @@ QR code par secteur.
 
 ## Comptes créés automatiquement au premier démarrage
 
-| Rôle | Nom d'utilisateur | Mot de passe |
-|---|---|---|
-| Administrateur | `admin` | `Danone2026!` |
-| Donneur d'ordre | `coordinateur` | `Sst2026!` |
+Deux comptes (`admin` et `coordinateur`) sont créés automatiquement au tout
+premier démarrage, avec un **mot de passe généré aléatoirement** à chaque
+installation — jamais codé en dur, jamais affiché dans l'interface ni écrit
+dans ce dépôt. Ce mot de passe temporaire s'affiche **une seule fois, dans
+les logs du serveur** (onglet "Logs" sur Render, ou la console si tu lances
+en local) juste après le premier démarrage — cherche la ligne
+"PREMIER DÉMARRAGE".
 
-**Change ces mots de passe dès le premier démarrage** (section "Utilisateurs"
-dans le panneau admin) avant de mettre l'application à la disposition de
-l'équipe.
+**Connecte-toi avec ces identifiants puis change les mots de passe
+immédiatement** (section "Utilisateurs" dans le panneau admin) avant de
+mettre l'application à la disposition de l'équipe.
+
+⚠️ Si cette application a déjà tourné avec l'ancienne version de ce fichier
+(comptes `admin` / `Danone2026!` et `coordinateur` / `Sst2026!` codés en
+dur), ces mots de passe sont désormais publics puisqu'ils ont été commités
+dans ce dépôt — connecte-toi et change-les dès maintenant, ce correctif de
+code ne les change pas rétroactivement dans une base déjà créée.
+
 
 ## Logo Danone
 

@@ -65,10 +65,22 @@ def seed_default_admin():
     with db() as conn:
         count = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
         if count == 0:
+            # Mots de passe temporaires générés aléatoirement à chaque premier
+            # démarrage — jamais codés en dur, jamais affichés dans l'interface
+            # ni écrits dans le dépôt. Visibles une seule fois, dans les logs
+            # du serveur (ex. logs Render), pour la première connexion.
             defaults = [
-                ("admin", "Danone2026!", "Administrateur SST", "admin"),
-                ("coordinateur", "Sst2026!", "Coordinateur SST", "donneur"),
+                ("admin", secrets.token_urlsafe(9), "Administrateur SST", "admin"),
+                ("coordinateur", secrets.token_urlsafe(9), "Coordinateur SST", "donneur"),
             ]
+            print("=" * 72)
+            print("PREMIER DÉMARRAGE — comptes créés avec mot de passe temporaire :")
+            for username, password, full_name, role in defaults:
+                print(f"    rôle={role:10s} utilisateur={username:14s} mot de passe={password}")
+            print("Connecte-toi avec ces identifiants puis change les mots de passe")
+            print("immédiatement dans le panneau admin (section \"Utilisateurs\").")
+            print("Ce message ne réapparaîtra plus après ce premier démarrage.")
+            print("=" * 72)
             for username, password, full_name, role in defaults:
                 h = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
                 conn.execute(
