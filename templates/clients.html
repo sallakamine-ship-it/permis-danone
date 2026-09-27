@@ -5,15 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Accès client — Opsafe</title>
 <meta name="description" content="Accès client Opsafe — sélectionnez votre entreprise pour accéder à votre espace de conformité SST.">
+{% import "_opsafe_macros.html" as os %}
+{{ os.os_head_assets() }}
 <link rel="stylesheet" href="/static/opsafe.css">
 </head>
 <body class="opsafe-body">
-{% import "_opsafe_macros.html" as os %}
 {{ os.os_header() }}
 
 <section class="os-page-hero os-page-hero--narrow">
   <div class="os-page-hero-inner">
-    <span class="os-eyebrow">Accès client</span>
+    <span class="os-eyebrow os-eyebrow--dark">Accès client</span>
     <h1>Sélectionnez votre entreprise.</h1>
     <p class="os-hero-sub">
       Chaque entreprise cliente dispose de son propre espace Opsafe — permis de
@@ -37,7 +38,7 @@
 
     <div class="os-inline-cta os-inline-cta--muted">
       <p>Votre entreprise n'est pas encore cliente Opsafe ?</p>
-      <a class="os-btn os-btn-outline" href="mailto:contact@opsafe.ca?subject=Demande%20d%27acc%C3%A8s%20Opsafe">✉️ Demander un accès</a>
+      <a class="os-btn os-btn-outline" href="mailto:contact@opsafe.ca?subject=Demande%20d%27acc%C3%A8s%20Opsafe">Demander un accès</a>
     </div>
   </div>
 </section>

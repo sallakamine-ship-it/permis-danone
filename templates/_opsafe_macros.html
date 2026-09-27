@@ -3,13 +3,28 @@
    Indépendant du branding Danone — voir static/opsafe.css.
    =========================================================================== #}
 
-{% macro os_logo(size=30) -%}
+{% macro os_head_assets() -%}
+<link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{%- endmacro %}
+
+{% macro os_hex(light=False) -%}
+<svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  {% if light -%}
+  <path d="M32 17L24.5 4.01H9.5L2 17L9.5 29.99H24.5L32 17Z" stroke="#FFFFFF" stroke-width="1.6"/>
+  {%- else -%}
+  <path d="M32 17L24.5 4.01H9.5L2 17L9.5 29.99H24.5L32 17Z" fill="#0F2440"/>
+  {%- endif %}
+  <path d="M11 17.5l4.5 4.5L24 12" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
+{%- endmacro %}
+
+{% macro os_logo(size=28, light=False) -%}
 <a href="/" class="os-logo">
-  <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <rect x="1" y="1" width="32" height="32" rx="9" fill="#0F2440"/>
-    <path d="M10 17.5l4.5 4.5L24 12" stroke="#10B981" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-  <span class="os-logo-word">Opsafe</span>
+  <span class="os-logo-mark" style="width:{{ size }}px;height:{{ size }}px;">{{ os_hex(light) }}</span>
+  <span class="os-logo-word{{ ' os-logo-word--light' if light else '' }}">Opsafe</span>
 </a>
 {%- endmacro %}
 
@@ -28,8 +43,39 @@
 {% macro os_footer() -%}
 <footer class="os-footer">
   <div class="os-footer-inner">
-    {{ os_logo(22) }}
+    {{ os_logo(24, light=True) }}
     <p>© 2026 Opsafe &nbsp;·&nbsp; Plateforme de conformité SST pour entreprises &nbsp;·&nbsp; <a href="mailto:contact@opsafe.ca" class="os-footer-contact">contact@opsafe.ca</a></p>
   </div>
 </footer>
+{%- endmacro %}
+
+{# ---------- icônes de fonctionnalités : traits fins, poids de ligne unique ---------- #}
+
+{% macro os_icon(name) -%}
+{% if name == 'permis' -%}
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M8 3.5h8a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M9.5 2.5h5a1 1 0 0 1 1 1V5h-7V3.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M9 12.5l2 2 4-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
+{%- elif name == 'formation' -%}
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M2.5 8.5L12 4l9.5 4.5L12 13 2.5 8.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M6.5 10.6v4.9c0 .5 3.5 3.4 5.5 3.4s5.5-2.9 5.5-3.4v-4.9" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M21 9v6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
+{%- elif name == 'audit' -%}
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="10.5" cy="10.5" r="7" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M7.5 10.5l2 2 4-4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M15.7 15.7L21 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
+{%- elif name == 'risque' -%}
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M12 3.5L21.5 20h-19L12 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M12 9.5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="12" cy="17" r="0.9" fill="currentColor"/>
+</svg>
+{%- endif %}
 {%- endmacro %}
