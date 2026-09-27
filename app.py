@@ -32,7 +32,15 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from database import init_db, db, row_to_dict
 
 BASE_DIR = os.path.dirname(__file__)
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+
+# DATA_DIR pointe vers le disque persistant Render (ex. /var/data) quand la
+# variable d'environnement est définie sur le service — sinon on reste sur le
+# dossier de l'app (comportement d'avant, disque éphémère). Voir le champ
+# database.py:DB_PATH pour la base de données, qui suit la même règle.
+DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
+os.makedirs(DATA_DIR, exist_ok=True)
+
+UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 AUDIT_UPLOAD_DIR = os.path.join(UPLOAD_DIR, "audits")
 os.makedirs(AUDIT_UPLOAD_DIR, exist_ok=True)
@@ -40,7 +48,7 @@ os.makedirs(AUDIT_UPLOAD_DIR, exist_ok=True)
 # Clé de signature des sessions. En production : variable d'environnement,
 # jamais codée en dur. Générée une fois ici pour que la démo fonctionne
 # sans configuration.
-SECRET_KEY_PATH = os.path.join(BASE_DIR, ".secret_key")
+SECRET_KEY_PATH = os.path.join(DATA_DIR, ".secret_key")
 if os.path.exists(SECRET_KEY_PATH):
     SECRET_KEY = open(SECRET_KEY_PATH).read().strip()
 else:

@@ -7,7 +7,13 @@ import json
 import os
 from contextlib import contextmanager
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "permis.db")
+# DATA_DIR pointe vers le disque persistant Render (ex. /var/data) quand la
+# variable d'environnement est définie sur le service — sinon on reste sur le
+# dossier de l'app (disque éphémère, comportement d'avant). Voir app.py pour
+# uploads/ et .secret_key, qui suivent la même règle.
+DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, "permis.db")
 
 
 def get_conn():
