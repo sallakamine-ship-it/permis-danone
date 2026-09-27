@@ -417,6 +417,18 @@ async def create_permit(request: Request, session=Depends(require_session)):
     return row_to_dict(row)
 
 
+@app.get("/api/permits/next-num")
+async def get_next_permit_num(session=Depends(require_session)):
+    """Numéro qu'obtiendra le prochain permis créé — affiché sur le formulaire
+    de création avant l'enregistrement. Prévisualisation seule : le numéro
+    définitif est (re)calculé et assigné de façon atomique par next_permit_num()
+    au moment du POST /api/permits, donc deux formulaires ouverts en même
+    temps peuvent prévisualiser le même numéro sans conflit réel."""
+    with db() as conn:
+        num = next_permit_num(conn)
+    return {"num": num}
+
+
 @app.get("/api/permits")
 async def list_permits(
     request: Request,

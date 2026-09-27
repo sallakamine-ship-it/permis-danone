@@ -206,7 +206,8 @@ let currentEditId = null;
 function resetForm(){
   currentEditId = null;
   document.getElementById('formTitle').textContent = 'PERMIS DE TRAVAIL DE CHANTIER';
-  document.getElementById('numPermisDisplay').textContent = 'Nouveau';
+  document.getElementById('numPermisDisplay').textContent = '…';
+  loadNextPermitNum();
   document.getElementById('saveBtn').textContent = '💾 Enregistrer';
   document.getElementById('printBtn').classList.add('hidden');
   document.querySelectorAll('#view-form input, #view-form textarea, #view-form select').forEach(e=>{
@@ -215,6 +216,15 @@ function resetForm(){
   document.getElementById('f_statut').value = 'Actif';
   ['height','bonbonne','roof','hot'].forEach(syncToggleState);
   refreshRiskCounts();
+}
+
+async function loadNextPermitNum(){
+  try{
+    const { num } = await api('/api/permits/next-num');
+    // Le numéro définitif est assigné à l'enregistrement — si l'utilisateur a
+    // entre-temps ouvert un permis existant à modifier, on n'écrase pas son numéro.
+    if(!currentEditId) document.getElementById('numPermisDisplay').textContent = num;
+  }catch(e){ /* garde le placeholder si l'appel échoue */ }
 }
 
 function collectFormData(){
