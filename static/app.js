@@ -70,7 +70,6 @@ buildChecks('risquesHauteur', LISTE_HAUTEUR, 'HAUTEUR');
 buildChecks('risquesBonbonne', LISTE_BONBONNE, 'BONBONNE');
 buildChecks('risquesToit', LISTE_TOIT, 'TOIT');
 buildChecks('risquesHot', LISTE_HOT, 'HOT');
-refreshRiskCounts();
 
 function getChecks(grp){ return [...document.querySelectorAll(`input[data-grp="${grp}"]:checked`)].map(c=>c.value); }
 function setChecks(grp, values){
@@ -286,7 +285,6 @@ function populateFormFromPermit(p){
   document.getElementById('formTitle').textContent = 'MODIFIER LE PERMIS';
   document.getElementById('numPermisDisplay').textContent = p.num;
   document.getElementById('saveBtn').textContent = '💾 Enregistrer les modifications';
-  document.getElementById('f_sector_id').value = p.sector_id || '';
   document.getElementById('f_donneur').value = p.donneur || '';
   document.getElementById('f_donneur_tel').value = p.donneur_tel || '';
   document.getElementById('f_entreprise').value = p.entreprise || '';
