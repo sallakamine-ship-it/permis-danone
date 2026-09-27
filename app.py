@@ -703,6 +703,18 @@ async def public_sector_info(slug: str):
 # ===========================================================================
 # PAGES HTML
 # ===========================================================================
+
+# Entreprises clientes actives sur Opsafe. Pour ajouter un client : une entrée
+# ici, aucune page à refaire (clients.html boucle sur cette liste).
+OPSAFE_CLIENTS = [
+    {
+        "name": "Danone",
+        "logo": "/static/img/logo-danone-icon.png",
+        "url": "/admin",
+    },
+]
+
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse(request, "landing.html", {})
@@ -720,6 +732,16 @@ async def secteur_page(request: Request, slug: str):
     if not sector:
         raise HTTPException(status_code=404, detail="Secteur introuvable")
     return templates.TemplateResponse(request, "secteur.html", {"sector": dict(sector)})
+
+
+@app.get("/formation", response_class=HTMLResponse)
+async def formation_page(request: Request):
+    return templates.TemplateResponse(request, "formation.html", {})
+
+
+@app.get("/clients", response_class=HTMLResponse)
+async def clients_page(request: Request):
+    return templates.TemplateResponse(request, "clients.html", {"clients": OPSAFE_CLIENTS})
 
 
 if __name__ == "__main__":

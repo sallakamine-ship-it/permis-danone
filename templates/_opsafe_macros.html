@@ -1,0 +1,35 @@
+{# ===========================================================================
+   Éléments partagés par les pages Opsafe (accueil, formation, clients).
+   Indépendant du branding Danone — voir static/opsafe.css.
+   =========================================================================== #}
+
+{% macro os_logo(size=30) -%}
+<a href="/" class="os-logo">
+  <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="1" y="1" width="32" height="32" rx="9" fill="#0F2440"/>
+    <path d="M10 17.5l4.5 4.5L24 12" stroke="#10B981" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span class="os-logo-word">Opsafe</span>
+</a>
+{%- endmacro %}
+
+{% macro os_header(active='') -%}
+<header class="os-header">
+  <div class="os-header-inner">
+    {{ os_logo() }}
+    <nav class="os-nav">
+      <a href="/formation" class="os-nav-link{{ ' is-active' if active=='formation' else '' }}">Formation</a>
+      <a href="/clients" class="os-btn os-btn-accent os-btn-sm">Accès client</a>
+    </nav>
+  </div>
+</header>
+{%- endmacro %}
+
+{% macro os_footer() -%}
+<footer class="os-footer">
+  <div class="os-footer-inner">
+    {{ os_logo(22) }}
+    <p>© 2026 Opsafe &nbsp;·&nbsp; Plateforme de conformité SST pour entreprises &nbsp;·&nbsp; <a href="mailto:contact@opsafe.ca" class="os-footer-contact">contact@opsafe.ca</a></p>
+  </div>
+</footer>
+{%- endmacro %}

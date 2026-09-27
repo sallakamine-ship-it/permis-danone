@@ -4,160 +4,71 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Opsafe — La conformité SST, vérifiée partout</title>
-<meta name="description" content="Opsafe — la conformité SST, vérifiée partout. Permis de travail numériques, registre centralisé, accès instantané des sous-traitants par QR code.">
+<meta name="description" content="Opsafe — la conformité SST, vérifiée partout. Permis de travail, formations, audits et analyses de risque centralisés pour vos entreprises clientes.">
 <link rel="stylesheet" href="/static/opsafe.css">
 </head>
 <body class="opsafe-body">
-
-{% macro os_mark_compact() -%}
-<span class="os-mark os-mark--compact">
-  <svg width="30" height="30" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <rect x="1" y="1" width="32" height="32" rx="9" fill="#0B2A4A" stroke="#2E7DD6" stroke-width="1.5"/>
-    <path d="M10 17.5l4.5 4.5L24 12" stroke="#2E7DD6" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-  <span class="os-mark-word">Opsafe</span>
-</span>
-{%- endmacro %}
-
-{% macro os_mark_full() -%}
-<span class="os-mark-full">
-  <span class="os-mark-row">
-    <svg width="40" height="40" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="1" y="1" width="32" height="32" rx="9" fill="#0B2A4A" stroke="#2E7DD6" stroke-width="1.5"/>
-      <path d="M10 17.5l4.5 4.5L24 12" stroke="#2E7DD6" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    <span class="os-mark-word">Opsafe</span>
-  </span>
-  <span class="os-signature">
-    La conformité SST, vérifiée partout.
-    <span class="os-signature-en">Safety compliance, verified everywhere.</span>
-  </span>
-</span>
-{%- endmacro %}
-
-<header class="os-topbar">
-  <div class="os-topbar-inner">
-    {{ os_mark_compact() }}
-    <nav class="os-topbar-nav">
-      <a href="#fonctionnalites" class="os-topbar-navlink">Fonctionnalités</a>
-      <a href="#contact" class="os-topbar-navlink">Contact</a>
-    </nav>
-    <div class="os-topbar-actions">
-      <a href="/admin" class="os-topbar-link">Accès client →</a>
-      <a class="os-btn os-btn-primary os-btn-sm" href="mailto:contact@opsafe.ca?subject=Demande%20de%20d%C3%A9mo%20Opsafe">Demander une démo</a>
-    </div>
-  </div>
-</header>
+{% import "_opsafe_macros.html" as os %}
+{{ os.os_header(active='accueil') }}
 
 <section class="os-hero">
   <div class="os-hero-inner">
-    {{ os_mark_full() }}
-    <span class="os-eyebrow">Plateforme SST multi-sites</span>
-    <h1>La sécurité de chantier,<br>sans friction.</h1>
+    <span class="os-eyebrow">Plateforme SST multi-entreprises</span>
+    <h1>La conformité SST,<br>vérifiée partout.</h1>
     <p class="os-hero-sub">
-      Permis de travail numériques, registre centralisé et accès instantané des
-      sous-traitants par simple scan du QR code de leur secteur — une seule
-      plateforme pour la sécurité de tous vos chantiers.
+      Permis de travail, formations, audits et analyses de risque — centralisés
+      sur une seule plateforme, pour toutes vos entreprises clientes et tous vos
+      chantiers.
     </p>
     <div class="os-hero-cta">
-      <a href="#contact"><button class="os-btn os-btn-primary">✉️ Demander une démo</button></a>
-      <a href="/admin"><button class="os-btn os-btn-ghost">🔐 Accès client</button></a>
+      <a href="/clients"><button class="os-btn os-btn-accent os-btn-lg">Accès client</button></a>
+      <a href="/formation"><button class="os-btn os-btn-outline os-btn-lg">Voir nos formations</button></a>
     </div>
-    <p class="os-hero-note">Vous êtes sous-traitant ? <a href="#soustraitants">Voir comment consulter votre permis</a></p>
   </div>
 </section>
 
 <section class="os-section" id="fonctionnalites">
   <div class="os-section-inner">
-    <h2 class="os-section-title">Ce que fait la plateforme</h2>
-    <p class="os-section-sub">Le cœur d'Opsafe aujourd'hui : le permis de travail, du terrain jusqu'au registre.</p>
-    <div class="os-feature-grid">
+    <h2 class="os-section-title">Ce qu'Opsafe gère</h2>
+    <p class="os-section-sub">Une seule plateforme pour la conformité SST de vos chantiers, du terrain jusqu'au registre.</p>
+    <div class="os-card-grid">
       <div class="os-feature-card">
-        <div class="os-feature-icon">🔒</div>
-        <h3>Comptes sécurisés</h3>
-        <p>Mots de passe chiffrés et sessions protégées par équipe. Aucune donnée en clair.</p>
-      </div>
-      <div class="os-feature-card">
-        <div class="os-feature-icon">📋</div>
-        <h3>Registre centralisé</h3>
-        <p>Tous les permis actifs et fermés au même endroit, avec recherche et filtres par secteur ou statut.</p>
+        <div class="os-feature-top">
+          <div class="os-feature-icon">📋</div>
+          <span class="os-badge os-badge--live">Disponible</span>
+        </div>
+        <h3>Permis de travail</h3>
+        <p>Création, suivi et fermeture électronique des permis de travail, avec registre centralisé et consultation instantanée par les sous-traitants via QR code.</p>
       </div>
       <div class="os-feature-card">
-        <div class="os-feature-icon">📱</div>
-        <h3>QR code par secteur</h3>
-        <p>Chaque zone de travail a son propre code. Le sous-traitant consulte son permis sans créer de compte.</p>
+        <div class="os-feature-top">
+          <div class="os-feature-icon">🎓</div>
+          <span class="os-badge">Bientôt</span>
+        </div>
+        <h3>Formations</h3>
+        <p>Catalogue de formations SST — cadenassage, espaces clos, travail en hauteur, SIMDUT et plus — pour garder vos équipes à jour.</p>
       </div>
       <div class="os-feature-card">
-        <div class="os-feature-icon">✍️</div>
-        <h3>Fermeture à deux signatures</h3>
-        <p>Signature électronique du donneur d'ordre et de l'exécutant requise pour fermer officiellement un permis.</p>
+        <div class="os-feature-top">
+          <div class="os-feature-icon">🔍</div>
+          <span class="os-badge">Bientôt</span>
+        </div>
+        <h3>Audits</h3>
+        <p>Audits de conformité planifiés et suivis, avec historique complet par site et par secteur d'activité.</p>
       </div>
       <div class="os-feature-card">
-        <div class="os-feature-icon">⏱️</div>
-        <h3>Suivi du cycle de vie</h3>
-        <p>Historique horodaté de chaque changement de statut, et fermeture automatique à l'échéance.</p>
-      </div>
-      <div class="os-feature-card">
-        <div class="os-feature-icon">📸</div>
-        <h3>Preuves visuelles</h3>
-        <p>Photos de chantier jointes directement au permis, consultables par tous les intervenants autorisés.</p>
-      </div>
-    </div>
-
-    <div class="os-roadmap">
-      <span class="os-roadmap-label">Sur la feuille de route —</span>
-      <span class="os-chip">🎓 Formations</span>
-      <span class="os-chip">🔍 Audits</span>
-      <span class="os-chip">⚠️ Analyse de risques</span>
-    </div>
-  </div>
-</section>
-
-<section class="os-section os-section--muted" id="soustraitants">
-  <div class="os-section-inner">
-    <h2 class="os-section-title">Deux façons d'accéder à la plateforme</h2>
-    <div class="os-path-grid">
-      <div class="os-path-card os-path-card--staff">
-        <div class="os-path-icon">🦺</div>
-        <h3>Personnel du site</h3>
-        <p>
-          Coordonnateurs SST et donneurs d'ordre : créez, éditez et fermez les
-          permis, gérez les secteurs et consultez le registre complet du site.
-        </p>
-        <a href="/admin"><button class="os-btn os-btn-dark">Se connecter</button></a>
-      </div>
-      <div class="os-path-card os-path-card--contractor">
-        <div class="os-path-icon">📷</div>
-        <h3>Sous-traitants</h3>
-        <p>
-          Aucun compte requis. Scannez le QR code affiché dans votre secteur de
-          travail, entrez le numéro de permis et le nom de votre entreprise pour
-          consulter les conditions de votre permis.
-        </p>
-        <span class="os-path-note">Disponible sur place, via le QR code de votre secteur</span>
+        <div class="os-feature-top">
+          <div class="os-feature-icon">⚠️</div>
+          <span class="os-badge">Bientôt</span>
+        </div>
+        <h3>Analyse de risque</h3>
+        <p>Analyses de risque structurées pour chaque tâche, alignées sur les normes internes de santé et sécurité de votre entreprise.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="os-section" id="contact">
-  <div class="os-section-inner" style="text-align:center">
-    <h2 class="os-section-title">Un autre site à ajouter ?</h2>
-    <p class="os-section-sub" style="margin-left:auto;margin-right:auto">Opsafe s'installe sur un nouveau site en quelques jours. Écrivez-nous pour une démo ou une question.</p>
-    <div class="os-contact-card">
-      <p>On répond personnellement à chaque demande — pas de formulaire à rallonge, juste un courriel.</p>
-      <a class="os-btn os-btn-primary" href="mailto:contact@opsafe.ca?subject=Demande%20de%20d%C3%A9mo%20Opsafe">✉️ Écrire à contact@opsafe.ca</a>
-      <span class="os-contact-email">ou mentionnez votre entreprise et le nombre de sites à couvrir</span>
-    </div>
-  </div>
-</section>
-
-<footer class="os-footer">
-  <div class="os-footer-inner">
-    {{ os_mark_compact() }}
-    <p>© 2026 Opsafe &nbsp;·&nbsp; Plateforme de sécurité opérationnelle pour vos chantiers &nbsp;·&nbsp; <a href="mailto:contact@opsafe.ca" style="color:#B9B9B9">contact@opsafe.ca</a></p>
-  </div>
-</footer>
+{{ os.os_footer() }}
 
 </body>
 </html>
