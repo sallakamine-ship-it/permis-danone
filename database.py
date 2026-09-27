@@ -130,6 +130,18 @@ def init_db():
         if "zone" not in existing_cols:
             conn.execute("ALTER TABLE permits ADD COLUMN zone TEXT")
 
+        # Migration : signature de réception — le sous-traitant consulte son
+        # permis (recherche publique par numéro + entreprise) puis le signe
+        # électroniquement sur place, avant de commencer le travail. Distinct
+        # de signature_donneur/signature_executant (fermeture officielle du
+        # permis en fin de travaux, deux signatures).
+        if "signature_reception" not in existing_cols:
+            conn.execute("ALTER TABLE permits ADD COLUMN signature_reception TEXT")
+        if "reception_nom" not in existing_cols:
+            conn.execute("ALTER TABLE permits ADD COLUMN reception_nom TEXT")
+        if "reception_le" not in existing_cols:
+            conn.execute("ALTER TABLE permits ADD COLUMN reception_le TEXT")
+
 
 def row_to_dict(row):
     if row is None:

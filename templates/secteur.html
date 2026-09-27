@@ -81,7 +81,10 @@ async function lookupPermit(){
   }
 }
 
+let currentPermit = null;
+
 function renderResult(p){
+  currentPermit = p;
   document.getElementById('searchView').classList.add('hidden');
   const rv = document.getElementById('resultView');
   rv.classList.remove('hidden');
@@ -158,12 +161,142 @@ function renderResult(p){
     </div>`;
   }
 
+  html += `<div class="section" id="receptionSection">
+    <h2>✍️ Signature de réception</h2>
+    ${p.statut === 'Fermé' ? '' : `<p class="note" style="margin-bottom:14px">
+      En signant, je confirme avoir consulté et compris les conditions de ce permis avant de débuter le travail.
+    </p>`}
+    ${renderReceptionBlock(p)}
+  </div>`;
+
   html += `<div class="actions">
     <button class="btn btn-secondary" onclick="location.reload()">🔄 Consulter un autre permis</button>
     <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimer</button>
   </div>`;
 
   rv.innerHTML = html;
+
+  if(!p.reception_nom && p.statut !== 'Fermé'){
+    setTimeout(()=>{ initSigPad('sigReception'); }, 30);
+  }
+}
+
+function renderReceptionBlock(p){
+  if(p.reception_nom){
+    const dt = p.reception_le ? formatDateTime(p.reception_le) : '';
+    return `<p style="color:var(--vert);font-weight:700">✅ Déjà consulté et signé par ${esc(p.reception_nom)}${dt ? ' le ' + dt : ''}.</p>`;
+  }
+  if(p.statut === 'Fermé'){
+    return `<p class="note">Ce permis est fermé — la signature de réception n'est plus disponible.</p>`;
+  }
+  return `
+    <label>Nom de l'exécutant <span class="req">*</span></label>
+    <input type="text" id="receptionNom" placeholder="Votre nom complet" autocomplete="off">
+    <div style="height:14px"></div>
+    <div class="sig-block">
+      <h4>Signature</h4>
+      <canvas class="sig-pad" id="sigReception"></canvas>
+      <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="clearSig('sigReception')">Effacer</button>
+    </div>
+    <div id="receptionError" class="login-error"></div>
+    <button class="btn btn-primary login-btn" onclick="signPermit()">✅ Signer et confirmer la réception</button>
+  `;
+}
+
+function formatDateTime(iso){
+  try{
+    const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z');
+    return d.toLocaleString('fr-CA', {dateStyle:'medium', timeStyle:'short'});
+  }catch(e){ return iso; }
+}
+
+// ---------- Signature électronique (canvas) ----------
+let sigCanvases = {};
+function initSigPad(id){
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = canvas.clientWidth * ratio;
+  canvas.height = canvas.clientHeight * ratio;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(ratio, ratio);
+  ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#1a1a1a';
+  let drawing = false, last = null;
+  function pos(e){
+    const rect = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x: p.clientX-rect.left, y: p.clientY-rect.top };
+  }
+  function start(e){ drawing=true; last=pos(e); e.preventDefault(); }
+  function move(e){
+    if(!drawing) return;
+    const p = pos(e);
+    ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke();
+    last = p; e.preventDefault();
+  }
+  function end(){ drawing=false; }
+  canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); canvas.addEventListener('touchend', end);
+  sigCanvases[id] = canvas;
+}
+function clearSig(id){
+  const canvas = sigCanvases[id];
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+function isCanvasBlank(canvas){
+  const ctx = canvas.getContext('2d');
+  const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  return !data.some(v=>v!==0);
+}
+
+async function signPermit(){
+  const nomInput = document.getElementById('receptionNom');
+  const err = document.getElementById('receptionError');
+  const nom = nomInput.value.trim();
+  const canvas = sigCanvases['sigReception'];
+  err.classList.remove('show');
+  if(!nom){
+    err.textContent = "Le nom de l'exécutant est requis.";
+    err.classList.add('show');
+    return;
+  }
+  if(!canvas || isCanvasBlank(canvas)){
+    err.textContent = 'La signature est requise.';
+    err.classList.add('show');
+    return;
+  }
+  const signature = canvas.toDataURL('image/png');
+  try{
+    const res = await fetch('/api/public/sign', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ num: currentPermit.num, entreprise: currentPermit.entreprise, nom, signature })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok){
+      err.textContent = data.detail || 'Erreur lors de la signature.';
+      err.classList.add('show');
+      return;
+    }
+    currentPermit.reception_nom = data.reception_nom;
+    currentPermit.reception_le = data.reception_le;
+    const block = document.getElementById('receptionSection');
+    block.innerHTML = '<h2>✍️ Signature de réception</h2>' + renderReceptionBlock(currentPermit);
+    toast('✅ Permis signé — bon travail et soyez prudent');
+  }catch(e){
+    err.textContent = 'Erreur de connexion au serveur. Réessayez.';
+    err.classList.add('show');
+  }
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
 document.getElementById('lookupEntreprise').addEventListener('keydown', e=>{ if(e.key==='Enter') lookupPermit(); });

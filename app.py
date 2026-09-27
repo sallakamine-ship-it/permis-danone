@@ -603,9 +603,10 @@ async def delete_photo(photo_id: int, session=Depends(require_session)):
 @app.get("/api/public/lookup")
 async def public_lookup(request: Request, num: str, entreprise: str, sector_slug: Optional[str] = None):
     """Recherche publique par numéro de permis + nom d'entreprise (confirmation).
-    Aucune authentification. Si sector_slug est fourni (arrivée par QR de secteur),
-    le permis doit appartenir à ce secteur — sinon refusé, pour empêcher un
-    sous-traitant de consulter un permis d'un autre secteur en devinant un numéro."""
+    Aucune authentification. Le secteur n'est plus utilisé pour restreindre la
+    recherche (aucun secteur n'est assigné à la création) : num + entreprise
+    suffisent, quel que soit le QR scanné. sector_slug est accepté pour
+    compatibilité mais n'est plus vérifié."""
     enforce_rate_limit(request, "public_lookup")
     num = (num or "").strip()
     entreprise = (entreprise or "").strip()
@@ -621,11 +622,6 @@ async def public_lookup(request: Request, num: str, entreprise: str, sector_slug
         if p["entreprise"] is None or normalize_company_name(entreprise) != normalize_company_name(p["entreprise"]):
             raise HTTPException(status_code=404, detail="Le nom d'entreprise ne correspond pas à ce permis")
 
-        if sector_slug:
-            sector = conn.execute("SELECT * FROM sectors WHERE slug = ?", (sector_slug,)).fetchone()
-            if not sector or p["sector_id"] != sector["id"]:
-                raise HTTPException(status_code=404, detail="Ce permis n'appartient pas à ce secteur")
-
         p = auto_close_if_expired(conn, row)
         photos = conn.execute("SELECT filename FROM photos WHERE permit_id = ?", (p["id"],)).fetchall()
 
@@ -638,11 +634,48 @@ async def public_lookup(request: Request, num: str, entreprise: str, sector_slug
         "height_sauvetage", "height_vigie", "bonbonne_work", "risques_bonbonne",
         "bonbonne_type", "roof_work", "risques_toit", "roof_type", "roof_resistance",
         "roof_perimetre", "hot_work", "risques_hot", "hot_nature", "hot_debut", "hot_fin",
-        "hot_surv", "hot_ext", "statut",
+        "hot_surv", "hot_ext", "statut", "reception_nom", "reception_le",
     ]
     result = {k: p.get(k) for k in safe_fields}
     result["photos"] = [f"/uploads/{ph['filename']}" for ph in photos]
     return result
+
+
+@app.post("/api/public/sign")
+async def public_sign(request: Request):
+    """Signature électronique du sous-traitant à la consultation du permis
+    (reconnaissance de lecture avant le début des travaux). Publique, mais
+    revérifie num + entreprise comme /api/public/lookup — pas de session."""
+    enforce_rate_limit(request, "public_sign")
+    body = await request.json()
+    num = (body.get("num") or "").strip()
+    entreprise = (body.get("entreprise") or "").strip()
+    nom = (body.get("nom") or "").strip()
+    signature = body.get("signature") or ""
+    if not num or not entreprise or not nom or not signature:
+        raise HTTPException(status_code=400, detail="Nom de l'exécutant et signature requis")
+
+    with db() as conn:
+        row = conn.execute("SELECT * FROM permits WHERE num = ?", (num,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Aucun permis trouvé avec ce numéro")
+        p = row_to_dict(row)
+        if p["entreprise"] is None or normalize_company_name(entreprise) != normalize_company_name(p["entreprise"]):
+            raise HTTPException(status_code=404, detail="Le nom d'entreprise ne correspond pas à ce permis")
+        p = auto_close_if_expired(conn, row)
+        if p["statut"] == "Fermé":
+            raise HTTPException(status_code=400, detail="Ce permis est fermé — signature impossible")
+
+        horodatage = datetime.utcnow().isoformat()
+        conn.execute(
+            "UPDATE permits SET signature_reception=?, reception_nom=?, reception_le=?, updated_at=datetime('now') WHERE id=?",
+            (signature, nom, horodatage, p["id"]),
+        )
+        add_status_history(
+            conn, p["id"], p["statut"], nom,
+            f"Permis consulté et signé sur place par {nom} ({entreprise})",
+        )
+    return {"ok": True, "reception_nom": nom, "reception_le": horodatage}
 
 
 @app.get("/api/public/sector/{slug}")
