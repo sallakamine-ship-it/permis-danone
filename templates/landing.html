@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Opsafe — Sécurité opérationnelle, simplifiée</title>
-<meta name="description" content="Opsafe — plateforme de gestion de la sécurité de chantier : permis de travail numériques, registre centralisé, accès instantané des sous-traitants par QR code.">
+<title>Opsafe — La conformité SST, vérifiée partout</title>
+<meta name="description" content="Opsafe — la conformité SST, vérifiée partout. Permis de travail numériques, registre centralisé, accès instantané des sous-traitants par QR code.">
 <link rel="stylesheet" href="/static/opsafe.css">
 </head>
 <body class="opsafe-body">
@@ -12,13 +12,26 @@
 {% macro os_mark_compact() -%}
 <span class="os-mark os-mark--compact">
   <svg width="30" height="30" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <rect x="1" y="1" width="32" height="32" rx="9" fill="url(#osGradCompact)"/>
-    <path d="M10 17.5l4.5 4.5L24 12" stroke="white" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
-    <defs><linearGradient id="osGradCompact" x1="0" y1="0" x2="34" y2="34" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#1BD8C4"/><stop offset="1" stop-color="#0E8074"/>
-    </linearGradient></defs>
+    <rect x="1" y="1" width="32" height="32" rx="9" fill="#0A0A0A" stroke="#FFC400" stroke-width="1.5"/>
+    <path d="M10 17.5l4.5 4.5L24 12" stroke="#FFC400" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
   <span class="os-mark-word">Opsafe</span>
+</span>
+{%- endmacro %}
+
+{% macro os_mark_full() -%}
+<span class="os-mark-full">
+  <span class="os-mark-row">
+    <svg width="40" height="40" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="1" y="1" width="32" height="32" rx="9" fill="#0A0A0A" stroke="#FFC400" stroke-width="1.5"/>
+      <path d="M10 17.5l4.5 4.5L24 12" stroke="#FFC400" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="os-mark-word">Opsafe</span>
+  </span>
+  <span class="os-signature">
+    La conformité SST, vérifiée partout.
+    <span class="os-signature-en">Safety compliance, verified everywhere.</span>
+  </span>
 </span>
 {%- endmacro %}
 
@@ -31,6 +44,7 @@
 
 <section class="os-hero">
   <div class="os-hero-inner">
+    {{ os_mark_full() }}
     <span class="os-eyebrow">Plateforme SST multi-sites</span>
     <h1>La sécurité de chantier,<br>sans friction.</h1>
     <p class="os-hero-sub">
