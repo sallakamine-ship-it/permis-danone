@@ -41,9 +41,11 @@
     <nav class="os-topbar-nav">
       <a href="#fonctionnalites" class="os-topbar-navlink">Fonctionnalités</a>
       <a href="#contact" class="os-topbar-navlink">Contact</a>
-      <a href="/admin" class="os-topbar-link">Accès client →</a>
-      <button class="os-btn os-btn-primary os-btn-sm" onclick="openDemoModal()">Demander une démo</button>
     </nav>
+    <div class="os-topbar-actions">
+      <a href="/admin" class="os-topbar-link">Accès client →</a>
+      <a class="os-btn os-btn-primary os-btn-sm" href="mailto:contact@opsafe.ca?subject=Demande%20de%20d%C3%A9mo%20Opsafe">Demander une démo</a>
+    </div>
   </div>
 </header>
 
@@ -58,10 +60,10 @@
       plateforme pour la sécurité de tous vos chantiers.
     </p>
     <div class="os-hero-cta">
-      <button class="os-btn os-btn-primary" onclick="openDemoModal()">✉️ Demander une démo</button>
+      <a href="#contact"><button class="os-btn os-btn-primary">✉️ Demander une démo</button></a>
       <a href="/admin"><button class="os-btn os-btn-ghost">🔐 Accès client</button></a>
-      <a href="#soustraitants"><button class="os-btn os-btn-ghost">📱 Je suis sous-traitant</button></a>
     </div>
+    <p class="os-hero-note">Vous êtes sous-traitant ? <a href="#soustraitants">Voir comment consulter votre permis</a></p>
   </div>
 </section>
 
@@ -122,7 +124,7 @@
           Coordonnateurs SST et donneurs d'ordre : créez, éditez et fermez les
           permis, gérez les secteurs et consultez le registre complet du site.
         </p>
-        <a href="/admin"><button class="os-btn os-btn-primary">Se connecter</button></a>
+        <a href="/admin"><button class="os-btn os-btn-dark">Se connecter</button></a>
       </div>
       <div class="os-path-card os-path-card--contractor">
         <div class="os-path-icon">📷</div>
@@ -139,14 +141,13 @@
 </section>
 
 <section class="os-section" id="contact">
-  <div class="os-section-inner os-contact-inner">
-    <div>
-      <h2 class="os-section-title">Une question, une démo ?</h2>
-      <p class="os-section-sub" style="margin-bottom:0">Parlons de votre chantier et de vos besoins de conformité SST.</p>
-    </div>
-    <div class="os-contact-actions">
-      <button class="os-btn os-btn-primary" onclick="openDemoModal()">✉️ Demander une démo</button>
-      <a href="mailto:sallak.amine@gmail.com" class="os-contact-email">sallak.amine@gmail.com</a>
+  <div class="os-section-inner" style="text-align:center">
+    <h2 class="os-section-title">Un autre site à ajouter ?</h2>
+    <p class="os-section-sub" style="margin-left:auto;margin-right:auto">Opsafe s'installe sur un nouveau site en quelques jours. Écrivez-nous pour une démo ou une question.</p>
+    <div class="os-contact-card">
+      <p>On répond personnellement à chaque demande — pas de formulaire à rallonge, juste un courriel.</p>
+      <a class="os-btn os-btn-primary" href="mailto:contact@opsafe.ca?subject=Demande%20de%20d%C3%A9mo%20Opsafe">✉️ Écrire à contact@opsafe.ca</a>
+      <span class="os-contact-email">ou mentionnez votre entreprise et le nombre de sites à couvrir</span>
     </div>
   </div>
 </section>
@@ -154,60 +155,9 @@
 <footer class="os-footer">
   <div class="os-footer-inner">
     {{ os_mark_compact() }}
-    <p>© 2026 Opsafe &nbsp;·&nbsp; Plateforme de sécurité opérationnelle pour vos chantiers</p>
-    <a href="mailto:sallak.amine@gmail.com" class="os-footer-contact">✉️ sallak.amine@gmail.com</a>
+    <p>© 2026 Opsafe &nbsp;·&nbsp; Plateforme de sécurité opérationnelle pour vos chantiers &nbsp;·&nbsp; <a href="mailto:contact@opsafe.ca" style="color:#B9B9B9">contact@opsafe.ca</a></p>
   </div>
 </footer>
-
-<div id="demoModal" class="os-modal-overlay hidden">
-  <div class="os-modal-card">
-    <button type="button" class="os-modal-close" onclick="closeDemoModal()" aria-label="Fermer">✕</button>
-    <h3>Demander une démo</h3>
-    <p class="os-modal-sub">Décrivez-nous votre chantier — on vous répond rapidement.</p>
-    <form id="demoForm" onsubmit="return submitDemoForm(event)">
-      <label>Nom <span class="os-req">*</span></label>
-      <input type="text" id="demoNom" required>
-      <label>Entreprise <span class="os-req">*</span></label>
-      <input type="text" id="demoEntreprise" required>
-      <label>Courriel <span class="os-req">*</span></label>
-      <input type="email" id="demoCourriel" required>
-      <label>Message</label>
-      <textarea id="demoMessage" rows="4" placeholder="Nombre de chantiers, besoins particuliers, échéancier..."></textarea>
-      <button type="submit" class="os-btn os-btn-primary os-modal-submit">Envoyer la demande</button>
-    </form>
-  </div>
-</div>
-
-<script>
-function openDemoModal(){
-  document.getElementById('demoModal').classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
-}
-function closeDemoModal(){
-  document.getElementById('demoModal').classList.add('hidden');
-  document.body.style.overflow = '';
-}
-function submitDemoForm(e){
-  e.preventDefault();
-  const nom = document.getElementById('demoNom').value.trim();
-  const entreprise = document.getElementById('demoEntreprise').value.trim();
-  const courriel = document.getElementById('demoCourriel').value.trim();
-  const message = document.getElementById('demoMessage').value.trim();
-  const subject = encodeURIComponent(`Demande de démo Opsafe — ${entreprise || nom}`);
-  const body = encodeURIComponent(
-    `Nom : ${nom}\nEntreprise : ${entreprise}\nCourriel : ${courriel}\n\nMessage :\n${message || '(aucun message)'}`
-  );
-  window.location.href = `mailto:sallak.amine@gmail.com?subject=${subject}&body=${body}`;
-  closeDemoModal();
-  return false;
-}
-document.getElementById('demoModal').addEventListener('click', e=>{
-  if(e.target.id === 'demoModal') closeDemoModal();
-});
-document.addEventListener('keydown', e=>{
-  if(e.key === 'Escape') closeDemoModal();
-});
-</script>
 
 </body>
 </html>
