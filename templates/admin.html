@@ -40,6 +40,7 @@
     <nav id="mainNav">
       <button id="nav-form" class="nav-btn nav-btn--primary" onclick="show('form')">＋ Nouveau permis</button>
       <button id="nav-registre" class="nav-btn nav-btn--outline active" onclick="show('registre')">📋 Registre <span class="nav-count" id="registreCount">0</span></button>
+      <button id="nav-mesPermis" class="nav-btn hidden" onclick="show('mesPermis')">📌 Mes permis <span class="nav-count" id="mesPermisCount">0</span></button>
       <button id="nav-audit" class="nav-btn" onclick="show('audit')">🔍 Audit</button>
       <button id="nav-secteurs" class="nav-btn" onclick="show('secteurs')">🗺️ Secteurs &amp; QR</button>
       <button id="nav-users" class="nav-btn hidden" onclick="show('users')">👤 Utilisateurs</button>
@@ -95,7 +96,8 @@
       <div class="section-body">
         <div>
           <label>Donneur d'ordre Danone <span class="req">*</span></label>
-          <input type="text" id="f_donneur" placeholder="Ex. : Marc-André Gagnon (Superviseur SST)">
+          <input type="text" id="f_donneur" list="donneurList" placeholder="Ex. : Marc-André Gagnon (Superviseur SST)">
+          <datalist id="donneurList"></datalist>
         </div>
         <div class="grid3" style="margin-top:14px">
           <div><label>Compagnie <span class="req">*</span></label><input type="text" id="f_entreprise" placeholder="Ex. : Soudure Technic Pro inc."></div>
@@ -346,6 +348,27 @@
     </div>
   </div>
 
+  <!-- ============ MES PERMIS (donneur d'ordre) ============ -->
+  <div id="view-mesPermis" class="view">
+    <div class="card">
+      <div class="permis-head"><h1 style="font-size:18px">MES PERMIS</h1></div>
+      <p class="note" style="padding:0 18px 10px">Permis où vous êtes le donneur d'ordre, encore ouverts.</p>
+      <div class="tools">
+        <button class="btn-outline-secondary" id="chipMineAll" onclick="setMinePeriod('')">🟢 Tous les ouverts</button>
+        <button class="btn-outline-secondary" id="chipMineWeek" onclick="setMinePeriod('week')">📅 Cette semaine</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>N°</th><th>Date</th><th>Entreprise</th><th>Exécutant</th><th>Secteur</th><th>Statut</th><th></th>
+          </tr></thead>
+          <tbody id="minePermisBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="minePagination"></div>
+    </div>
+  </div>
+
   <!-- ============ AUDIT ============ -->
   <div id="view-audit" class="view">
     <div class="card">
@@ -394,7 +417,7 @@
     <div class="card">
       <div class="permis-head">
         <h1 id="detailNum" style="font-size:18px"></h1>
-        <button class="btn btn-secondary btn-sm" onclick="show('registre')">← Retour au registre</button>
+        <button class="btn btn-secondary btn-sm" onclick="backToList()">← Retour</button>
       </div>
       <div class="section" id="detailContent"></div>
       <div class="actions">

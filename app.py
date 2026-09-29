@@ -23,7 +23,7 @@ import binascii
 import secrets
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional
 
 import bcrypt
@@ -652,6 +652,19 @@ def _validate_sector(conn, sector_id):
     return sector_id
 
 
+@app.get("/api/donneurs")
+async def list_donneurs(session=Depends(require_session)):
+    """Noms des comptes 'donneur d'ordre' enregistrés — pour suggérer un nom
+    exact dans le formulaire de permis (le rapprochement du tableau de bord
+    personnel /api/permits?mine=true compare ce texte au nom complet de la
+    session, donc une orthographe cohérente évite les faux négatifs)."""
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT full_name FROM users WHERE role='donneur' ORDER BY full_name"
+        ).fetchall()
+    return [r["full_name"] for r in rows]
+
+
 @app.post("/api/permits")
 async def create_permit(request: Request, session=Depends(require_session)):
     body = await read_json(request)
@@ -707,6 +720,8 @@ async def list_permits(
     statut: str = "",
     sector_id: Optional[int] = None,
     archives: bool = False,
+    mine: bool = False,
+    period: str = "",
 ):
     if archives and session["role"] != "admin":
         raise HTTPException(status_code=403, detail="Accès admin requis")
@@ -716,6 +731,20 @@ async def list_permits(
 
     where = ["archive_le IS NOT NULL" if archives else "archive_le IS NULL"]
     params = []
+    if mine:
+        # Tableau de bord personnel du donneur d'ordre : le champ "donneur"
+        # est du texte libre sur le permis (pas de compte lié), donc on
+        # rapproche sur le nom complet de la session, insensible à la casse
+        # et aux espaces superflus.
+        where.append("TRIM(donneur) = TRIM(?) COLLATE NOCASE")
+        params.append(session["full_name"])
+    if period == "week":
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=6)
+        where.append("date(created_at) BETWEEN date(?) AND date(?)")
+        params.append(week_start.isoformat())
+        params.append(week_end.isoformat())
     if search:
         where.append("(num LIKE ? OR entreprise LIKE ? OR executant LIKE ? OR description LIKE ? OR lieux LIKE ? OR donneur LIKE ?)")
         like = f"%{search}%"

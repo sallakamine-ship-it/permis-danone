@@ -141,9 +141,11 @@ function afterLogin(){
   const roleLabel = {admin:'Admin', donneur:"Donneur d'ordre"}[currentUser.role] || currentUser.role;
   document.getElementById('userRoleDisplay').textContent = roleLabel;
   document.getElementById('nav-users').classList.toggle('hidden', currentUser.role !== 'admin');
+  document.getElementById('nav-mesPermis').classList.toggle('hidden', currentUser.role !== 'donneur');
   loadSectorsIntoSelects();
+  loadDonneursDatalist();
   resetForm();
-  show('registre');
+  show(currentUser.role === 'donneur' ? 'mesPermis' : 'registre');
   loadNotifications();
   clearInterval(notifPollTimer);
   notifPollTimer = setInterval(loadNotifications, 25000);
@@ -158,17 +160,21 @@ async function checkSession(){
 }
 
 // ---------- Navigation ----------
+let lastListView = 'registre';
 function show(v){
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelectorAll('#mainNav button').forEach(b=>b.classList.remove('active'));
   const navBtn = document.getElementById('nav-'+v);
   if(navBtn) navBtn.classList.add('active');
+  if(v==='registre' || v==='mesPermis') lastListView = v;
   if(v==='registre'){ loadRegistre(1); }
+  if(v==='mesPermis'){ loadMesPermis(1); }
   if(v==='audit'){ loadAuditSectorSelects(); loadAudits(); }
   if(v==='secteurs'){ loadSecteurs(); }
   if(v==='users'){ loadUsers(); }
 }
+function backToList(){ show(lastListView); }
 
 // ---------- Sections conditionnelles ----------
 function syncToggleState(name){
@@ -459,6 +465,61 @@ function renderPagination(page, pages, total){
     <button ${page<=1?'disabled':''} onclick="loadRegistre(${page-1})">← Précédent</button>
     <span>Page ${page} / ${pages} (${total} permis)</span>
     <button ${page>=pages?'disabled':''} onclick="loadRegistre(${page+1})">Suivant →</button>`;
+}
+
+// ---------- Mes permis (tableau de bord personnel — donneur d'ordre) ----------
+let mineState = { page: 1, period: '' };
+
+async function loadDonneursDatalist(){
+  const names = await api('/api/donneurs').catch(()=>[]);
+  document.getElementById('donneurList').innerHTML = names.map(n=>`<option value="${esc(n)}">`).join('');
+}
+
+function setMinePeriod(period){
+  mineState.period = period;
+  document.getElementById('chipMineAll').classList.toggle('chip-active', period==='');
+  document.getElementById('chipMineWeek').classList.toggle('chip-active', period==='week');
+  loadMesPermis(1);
+}
+
+async function loadMesPermis(page){
+  mineState.page = page || mineState.page;
+  await refreshSectorNamesCache();
+  const params = new URLSearchParams({
+    page: mineState.page, page_size: 25, mine: 'true', statut: 'Actif',
+  });
+  if(mineState.period) params.set('period', mineState.period);
+  const data = await api('/api/permits?' + params.toString());
+  document.getElementById('mesPermisCount').textContent = data.total || 0;
+  document.getElementById('chipMineAll').classList.toggle('chip-active', mineState.period==='');
+  document.getElementById('chipMineWeek').classList.toggle('chip-active', mineState.period==='week');
+  renderMinePermisTable(data.permits);
+  renderMinePagination(data.page, data.pages, data.total);
+}
+
+function renderMinePermisTable(permits){
+  const body = document.getElementById('minePermisBody');
+  if(!permits.length){
+    body.innerHTML = `<tr><td colspan="7"><div class="empty">Aucun permis ouvert pour le moment.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = permits.map(p=>{
+    const sb = {'Actif':'b-actif','Fermé':'b-ferme'}[p.statut]||'b-ferme';
+    const sectorName = sectorNamesCache[p.sector_id] || '—';
+    return `<tr style="cursor:pointer" onclick="openDetail(${p.id})">
+      <td><b>${esc(p.num)}</b></td><td>${esc((p.created_at||'').slice(0,10))}</td>
+      <td>${esc(p.entreprise)||'—'}</td><td>${esc(p.executant)}</td><td>${esc(sectorName)}</td>
+      <td><span class="badge ${sb}">${esc(p.statut)}</span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openDetail(${p.id})">👁️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMinePagination(page, pages, total){
+  document.getElementById('minePagination').innerHTML = `
+    <button ${page<=1?'disabled':''} onclick="loadMesPermis(${page-1})">← Précédent</button>
+    <span>Page ${page} / ${pages} (${total} permis)</span>
+    <button ${page>=pages?'disabled':''} onclick="loadMesPermis(${page+1})">Suivant →</button>`;
 }
 
 // ---------- Détail / modification / fermeture / photos / historique ----------
