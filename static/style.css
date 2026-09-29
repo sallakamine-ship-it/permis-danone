@@ -240,3 +240,62 @@ tr:hover td{background:#fafafa}
   .lp-hero h1{font-size:30px}
   .lp-section-inner{padding:48px 20px}
 }
+
+/* ===========================================================================
+   PORTAIL ADMIN — barre supérieure, en-tête de permis, bandeau pré-rempli,
+   sections numérotées et repliables (voir templates/admin.html).
+   =========================================================================== */
+
+/* ---------- barre supérieure ---------- */
+.brandbar{display:flex;align-items:center;gap:10px}
+.brandbar-pill{background:#e8f2fc;color:var(--bleu-danone-fonce);font-size:11px;font-weight:800;letter-spacing:.4px;padding:3px 9px;border-radius:6px}
+.brandbar-sep{width:1px;height:20px;background:#ddd}
+.brandbar-label{font-size:13px;color:var(--gris);font-weight:600;white-space:nowrap}
+@media(max-width:760px){.brandbar-sep,.brandbar-label{display:none}}
+
+.nav-btn{border:1px solid transparent;background:#eee;padding:10px 18px;border-radius:9px;font-weight:700;cursor:pointer;font-size:13.5px;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+.nav-btn:hover{background:#ddd}
+.nav-btn.active{background:var(--bleu-danone-fonce);color:#fff}
+.nav-btn--primary{background:var(--bleu-danone-fonce);color:#fff}
+.nav-btn--primary:hover{background:#283780}
+.nav-btn--outline{background:#fff;border-color:#d8d8d8;color:var(--noir)}
+.nav-btn--outline:hover{background:#f5f5f5}
+.nav-btn--outline.active{background:#eef5fc;border-color:var(--bleu-danone-fonce);color:var(--bleu-danone-fonce)}
+.nav-count{background:#eef1f7;color:var(--bleu-danone-fonce);font-size:11px;font-weight:800;padding:1px 8px;border-radius:10px;margin-left:2px}
+.nav-btn--outline.active .nav-count{background:var(--bleu-danone-fonce);color:#fff}
+
+.avatar-wrap{position:relative;flex-shrink:0;display:inline-flex}
+.online-dot{position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:var(--vert);border:2px solid #fff}
+.btn-outline-danger{background:#fff;border:1px solid #f0c6c2;color:var(--rouge);padding:8px 14px;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn-outline-danger:hover{background:#fdecea}
+
+/* ---------- en-tête de permis : tag + ligne de site ---------- */
+.permit-tag{display:inline-block;background:rgba(255,255,255,.16);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:3px 10px;border-radius:5px;margin-bottom:8px}
+.site-line{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:4px}
+
+/* ---------- bandeau "pré-rempli par Danone" ---------- */
+.prefill-callout{display:flex;gap:14px;background:#eef5fc;border:1px solid #cfe3f7;border-radius:10px;padding:16px 18px;margin:18px;align-items:flex-start}
+.prefill-dot{width:10px;height:10px;border-radius:50%;background:var(--bleu-danone-fonce);margin-top:6px;flex-shrink:0}
+.prefill-badge{display:inline-block;background:var(--bleu-danone-fonce);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;padding:3px 10px;border-radius:5px;margin-bottom:8px}
+.prefill-body h3{font-size:15px;margin-bottom:6px;color:var(--bleu-danone-fonce)}
+.prefill-body .prefill-sub{font-weight:400;font-size:13px;color:var(--gris)}
+.prefill-body p{font-size:13px;color:#444;line-height:1.6;max-width:640px;margin:0}
+
+/* ---------- sections numérotées et repliables ---------- */
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;flex-wrap:wrap;margin-bottom:14px;user-select:none}
+.section-head-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.section-head-left h2{margin-bottom:0}
+.sec-num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#e8f2fc;color:var(--bleu-danone-fonce);font-weight:800;font-size:13px;flex-shrink:0}
+.section-head-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sec-status{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:4px 11px;border-radius:12px;white-space:nowrap}
+.sec-status:empty{display:none}
+.sec-status--done{background:#e8f5e9;color:var(--vert)}
+.sec-status--todo{background:#f0f0f0;color:#888}
+.sec-status--off{background:#f0f0f0;color:#aaa}
+.sec-chev{display:inline-block;color:#999;font-size:12px;transition:transform .18s}
+.section.is-collapsed .section-body{display:none}
+.section.is-collapsed .sec-chev{transform:rotate(-90deg)}
+
+@media print{
+  .prefill-callout,.section-head-right{display:none !important}
+}

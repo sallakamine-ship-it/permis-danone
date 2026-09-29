@@ -31,21 +31,26 @@
 <div class="app" id="appScreen" style="display:none">
 
   <header class="top">
-    <div class="logo">{{ brand_mark_compact('34px') }}</div>
+    <div class="brandbar">
+      <div class="logo">{{ brand_mark_compact('34px') }}</div>
+      <span class="brandbar-pill">SST</span>
+      <span class="brandbar-sep"></span>
+      <span class="brandbar-label">Portail Sécurité</span>
+    </div>
     <nav id="mainNav">
-      <button id="nav-form" onclick="show('form')">📝 Nouveau permis</button>
-      <button id="nav-registre" class="active" onclick="show('registre')">📋 Registre</button>
-      <button id="nav-audit" onclick="show('audit')">🔍 Audit</button>
-      <button id="nav-secteurs" onclick="show('secteurs')">🗺️ Secteurs &amp; QR</button>
-      <button id="nav-users" onclick="show('users')" class="hidden">👤 Utilisateurs</button>
+      <button id="nav-form" class="nav-btn nav-btn--primary" onclick="show('form')">＋ Nouveau permis</button>
+      <button id="nav-registre" class="nav-btn nav-btn--outline active" onclick="show('registre')">📋 Registre <span class="nav-count" id="registreCount">0</span></button>
+      <button id="nav-audit" class="nav-btn" onclick="show('audit')">🔍 Audit</button>
+      <button id="nav-secteurs" class="nav-btn" onclick="show('secteurs')">🗺️ Secteurs &amp; QR</button>
+      <button id="nav-users" class="nav-btn hidden" onclick="show('users')">👤 Utilisateurs</button>
     </nav>
     <div class="user-chip">
-      <div class="avatar" id="userAvatar">?</div>
+      <div class="avatar-wrap"><div class="avatar" id="userAvatar">?</div><span class="online-dot"></span></div>
       <div>
         <span id="userNameDisplay">—</span>
         <span class="role-tag" id="userRoleDisplay">—</span>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="logout()">🚪 Déconnexion</button>
+      <button class="btn-outline-danger" onclick="logout()">⎋ Déconnexion</button>
     </div>
   </header>
 
@@ -54,88 +59,123 @@
   <div class="card">
     <div class="permis-head">
       <div>
+        <span class="permit-tag">Sécurité</span>
         <h1 id="formTitle">PERMIS DE TRAVAIL DE CHANTIER</h1>
       </div>
-      <div class="num" id="numPermisDisplay">Nouveau</div>
+      <div style="text-align:right">
+        <div class="num" id="numPermisDisplay">Nouveau</div>
+        <div class="site-line">Site : Danone Boucherville</div>
+      </div>
     </div>
 
-    <div class="section">
-      <h2>Donneur d'ordre & Entreprise</h2>
-      <div class="grid2">
+    <div class="prefill-callout">
+      <span class="prefill-dot"></span>
+      <div class="prefill-body">
+        <span class="prefill-badge">Pré-rempli par Danone</span>
+        <h3>Permis pré-rempli par Danone <span class="prefill-sub">(prêt pour le sous-traitant)</span></h3>
+        <p>Vous préparez ici les informations techniques et les consignes de sécurité pour l'entreprise extérieure. Lors de son arrivée sur site, l'exécutant devra vérifier ces éléments et apposer sa signature (voir la page de réception par secteur).</p>
+      </div>
+    </div>
+
+    <div class="section" data-sec-id="donneur">
+      <div class="section-head" onclick="toggleSectionCollapse('donneur')">
+        <div class="section-head-left"><span class="sec-num">1</span><h2>Donneur d'ordre &amp; Entreprise</h2></div>
+        <div class="section-head-right"><span class="sec-status" id="secstat-donneur"></span><span class="sec-chev">▾</span></div>
+      </div>
+      <div class="section-body">
         <div>
           <label>Donneur d'ordre Danone <span class="req">*</span></label>
-          <input type="text" id="f_donneur" placeholder="Nom du donneur d'ordre">
-          <div style="height:8px"></div>
-          <label>Téléphone</label>
-          <input type="tel" id="f_donneur_tel" placeholder="ex. 450 555-0100">
+          <input type="text" id="f_donneur" placeholder="Ex. : Marc-André Gagnon (Superviseur SST)">
         </div>
-        <div>
-          <label>Entreprise extérieure <span class="req">*</span></label>
-          <input type="text" id="f_entreprise" placeholder="Utilisé par le sous-traitant pour consulter son permis">
-          <div style="height:8px"></div>
-          <label>Nom de l'exécutant <span class="req">*</span></label>
-          <input type="text" id="f_executant" placeholder="Nom du travailleur">
-          <div style="height:8px"></div>
-          <label>Téléphone</label>
-          <input type="tel" id="f_executant_tel">
+        <div class="grid3" style="margin-top:14px">
+          <div><label>Compagnie <span class="req">*</span></label><input type="text" id="f_entreprise" placeholder="Ex. : Soudure Technic Pro inc."></div>
+          <div><label>Nom en lettres carrées <span class="req">*</span></label><input type="text" id="f_executant" placeholder="Ex. : Dupont Jean-Luc" style="text-transform:uppercase"></div>
+          <div><label>Téléphone</label><input type="tel" id="f_executant_tel" placeholder="Ex. : 514-555-0123"></div>
+        </div>
+        <div style="max-width:340px;margin-top:14px">
+          <label>Téléphone (donneur d'ordre)</label>
+          <input type="tel" id="f_donneur_tel" placeholder="Ex. : 450 555-0100">
         </div>
       </div>
     </div>
 
-    <div class="section">
-      <h2>Description & Lieux</h2>
-      <div class="grid2">
-        <div><label>Description des travaux <span class="req">*</span></label><textarea id="f_description"></textarea></div>
-        <div><label>Lieux <span class="req">*</span></label><textarea id="f_lieux"></textarea></div>
+    <div class="section" data-sec-id="description">
+      <div class="section-head" onclick="toggleSectionCollapse('description')">
+        <div class="section-head-left"><span class="sec-num">2</span><h2>Description &amp; Lieux</h2></div>
+        <div class="section-head-right"><span class="sec-status" id="secstat-description"></span><span class="sec-chev">▾</span></div>
       </div>
-      <div style="margin-top:12px">
-        <label>Secteur (zone du site)</label>
-        <select id="f_zone">
-          <option value="">— Sélectionner —</option>
-          <option>CIP Thermisé / Thermized CIP</option>
-          <option>CIP central (vrac et pasteurisé) / Central CIP (Bulk and pateurised)</option>
-          <option>Cuves (80 à 83) / Tanks (80 to 83)</option>
-          <option>HTST (4/5/Sterilo 1)</option>
-          <option>MIF</option>
-          <option>Process 20T</option>
-          <option>Process 40T</option>
-          <option>Process 45T</option>
-          <option>Process vegetal</option>
-          <option>Reception lait (ancienne) / Milk reception (Old)</option>
-          <option>Reception lait (nouvelle) / Milk reception (New)</option>
-          <option>Salle de contrôle</option>
-          <option>Salle de mélange / Mixing room</option>
-          <option>Salle de poudrage (végétal) / powder room (Vegetal)</option>
-          <option>Salles de poudrage (brassé) / Powder room (Brewed)</option>
-          <option>Sterilo 2</option>
-          <option>Tour à Charbon</option>
-          <option>UF/Eau micro filtré</option>
-        </select>
-      </div>
-      <div class="grid2" style="margin-top:12px">
-        <div><label>Date début</label><input type="date" id="f_date_debut"></div>
-        <div><label>Date fin</label><input type="date" id="f_date_fin"></div>
-      </div>
-    </div>
-
-    <div class="section"><h2>A · Procédures et risques à considérer <span class="count-badge" id="countA">0</span></h2>
-      <div class="risques"><div class="risques-grid" id="risquesA"></div></div>
-    </div>
-    <div class="section"><h2>B · Comportements à considérer <span class="count-badge" id="countB">0</span></h2>
-      <div class="risques"><div class="risques-grid" id="risquesB"></div></div>
-    </div>
-    <div class="section"><h2>C · Zone critique — Sécurité alimentaire <span class="count-badge" id="countC">0</span></h2>
-      <div class="risques"><div class="risques-grid" id="risquesC"></div></div>
-      <div class="grid2" style="margin-top:12px">
-        <div><label>Conformité</label>
-          <select id="f_zone_conforme"><option value="">—</option><option>Conforme</option><option>Non-conforme</option></select>
+      <div class="section-body">
+        <div class="grid2">
+          <div><label>Description des travaux <span class="req">*</span></label><textarea id="f_description"></textarea></div>
+          <div><label>Lieux <span class="req">*</span></label><textarea id="f_lieux"></textarea></div>
         </div>
-        <div><label>Commentaires</label><input type="text" id="f_zone_comm"></div>
+        <div style="margin-top:12px">
+          <label>Secteur (zone du site)</label>
+          <select id="f_zone">
+            <option value="">— Sélectionner —</option>
+            <option>CIP Thermisé / Thermized CIP</option>
+            <option>CIP central (vrac et pasteurisé) / Central CIP (Bulk and pateurised)</option>
+            <option>Cuves (80 à 83) / Tanks (80 to 83)</option>
+            <option>HTST (4/5/Sterilo 1)</option>
+            <option>MIF</option>
+            <option>Process 20T</option>
+            <option>Process 40T</option>
+            <option>Process 45T</option>
+            <option>Process vegetal</option>
+            <option>Reception lait (ancienne) / Milk reception (Old)</option>
+            <option>Reception lait (nouvelle) / Milk reception (New)</option>
+            <option>Salle de contrôle</option>
+            <option>Salle de mélange / Mixing room</option>
+            <option>Salle de poudrage (végétal) / powder room (Vegetal)</option>
+            <option>Salles de poudrage (brassé) / Powder room (Brewed)</option>
+            <option>Sterilo 2</option>
+            <option>Tour à Charbon</option>
+            <option>UF/Eau micro filtré</option>
+          </select>
+        </div>
+        <div class="grid2" style="margin-top:12px">
+          <div><label>Date début</label><input type="date" id="f_date_debut"></div>
+          <div><label>Date fin</label><input type="date" id="f_date_fin"></div>
+        </div>
       </div>
     </div>
 
-    <div class="section">
-      <h2>Travail en hauteur</h2>
+    <div class="section" data-sec-id="risquesA">
+      <div class="section-head" onclick="toggleSectionCollapse('risquesA')">
+        <div class="section-head-left"><span class="sec-num">3</span><h2>A · Procédures et risques à considérer <span class="count-badge" id="countA">0</span></h2></div>
+        <div class="section-head-right"><span class="sec-chev">▾</span></div>
+      </div>
+      <div class="section-body"><div class="risques"><div class="risques-grid" id="risquesA"></div></div></div>
+    </div>
+    <div class="section" data-sec-id="risquesB">
+      <div class="section-head" onclick="toggleSectionCollapse('risquesB')">
+        <div class="section-head-left"><span class="sec-num">4</span><h2>B · Comportements à considérer <span class="count-badge" id="countB">0</span></h2></div>
+        <div class="section-head-right"><span class="sec-chev">▾</span></div>
+      </div>
+      <div class="section-body"><div class="risques"><div class="risques-grid" id="risquesB"></div></div></div>
+    </div>
+    <div class="section" data-sec-id="risquesC">
+      <div class="section-head" onclick="toggleSectionCollapse('risquesC')">
+        <div class="section-head-left"><span class="sec-num">5</span><h2>C · Zone critique — Sécurité alimentaire <span class="count-badge" id="countC">0</span></h2></div>
+        <div class="section-head-right"><span class="sec-chev">▾</span></div>
+      </div>
+      <div class="section-body">
+        <div class="risques"><div class="risques-grid" id="risquesC"></div></div>
+        <div class="grid2" style="margin-top:12px">
+          <div><label>Conformité</label>
+            <select id="f_zone_conforme"><option value="">—</option><option>Conforme</option><option>Non-conforme</option></select>
+          </div>
+          <div><label>Commentaires</label><input type="text" id="f_zone_comm"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" data-sec-id="hauteur">
+      <div class="section-head" onclick="toggleSectionCollapse('hauteur')">
+        <div class="section-head-left"><span class="sec-num">6</span><h2>Travail en hauteur</h2></div>
+        <div class="section-head-right"><span class="sec-status" id="secstat-hauteur"></span><span class="sec-chev">▾</span></div>
+      </div>
+      <div class="section-body">
       <div class="hot-toggle hot-toggle--hauteur">
         <label class="switch"><input type="checkbox" id="f_height_work" onchange="toggleSection('height')"><span class="slider"></span></label>
         <div><strong>Travail en hauteur requis ?</strong><br><span style="font-size:13px;color:#666">Échafaudage, nacelle, échelle, chute > 3 m…</span></div>
@@ -184,10 +224,15 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
 
-    <div class="section">
-      <h2>Travail au toit</h2>
+    <div class="section" data-sec-id="toit">
+      <div class="section-head" onclick="toggleSectionCollapse('toit')">
+        <div class="section-head-left"><span class="sec-num">7</span><h2>Travail au toit</h2></div>
+        <div class="section-head-right"><span class="sec-status" id="secstat-toit"></span><span class="sec-chev">▾</span></div>
+      </div>
+      <div class="section-body">
       <div class="hot-toggle hot-toggle--toit">
         <label class="switch"><input type="checkbox" id="f_roof_work" onchange="toggleSection('roof')"><span class="slider"></span></label>
         <div><strong>Travail au toit requis ?</strong><br><span style="font-size:13px;color:#666">Ouvertures/lucarnes, rives, résistance du toit…</span></div>
@@ -214,10 +259,15 @@
         </div>
         <div style="margin-top:12px"><label>Surveillant / vigie désigné (toit) <span class="req">*</span></label><input type="text" id="f_roof_vigie"></div>
       </div>
+      </div>
     </div>
 
-    <div class="section">
-      <h2>Permis de travail à chaud</h2>
+    <div class="section" data-sec-id="chaud">
+      <div class="section-head" onclick="toggleSectionCollapse('chaud')">
+        <div class="section-head-left"><span class="sec-num">8</span><h2>Permis de travail à chaud</h2></div>
+        <div class="section-head-right"><span class="sec-status" id="secstat-chaud"></span><span class="sec-chev">▾</span></div>
+      </div>
+      <div class="section-body">
       <div class="hot-toggle hot-toggle--chaud">
         <label class="switch"><input type="checkbox" id="f_hot_work" onchange="toggleSection('hot')"><span class="slider"></span></label>
         <div><strong>Travail à chaud requis ?</strong><br><span style="font-size:13px;color:#666">Brasage, découpage, meulage, soudage, perçage…</span></div>
@@ -243,11 +293,17 @@
           <div><label>Extincteur #</label><input type="text" id="f_hot_ext"></div>
         </div>
       </div>
+      </div>
     </div>
 
-    <div class="section">
-      <h2>Statut</h2>
-      <select id="f_statut" style="max-width:260px"><option value="Actif" selected>Actif</option><option value="Fermé">Fermé</option></select>
+    <div class="section" data-sec-id="statut">
+      <div class="section-head" onclick="toggleSectionCollapse('statut')">
+        <div class="section-head-left"><span class="sec-num">9</span><h2>Statut</h2></div>
+        <div class="section-head-right"><span class="sec-status" id="secstat-statut"></span><span class="sec-chev">▾</span></div>
+      </div>
+      <div class="section-body">
+        <select id="f_statut" style="max-width:260px"><option value="Actif" selected>Actif</option><option value="Fermé">Fermé</option></select>
+      </div>
     </div>
 
     <div class="actions">

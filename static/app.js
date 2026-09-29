@@ -173,6 +173,39 @@ function syncToggleState(name){
 }
 function toggleSection(name){ syncToggleState(name); }
 
+// ---------- Sections numérotées repliables + statut "Renseigné" ----------
+function toggleSectionCollapse(id){
+  const sec = document.querySelector(`.section[data-sec-id="${id}"]`);
+  if(sec) sec.classList.toggle('is-collapsed');
+}
+const SECTION_STATUS_RULES = {
+  donneur: () => (val('f_donneur') && val('f_entreprise') && val('f_executant')) ? 'done' : 'todo',
+  description: () => (val('f_description') && val('f_lieux')) ? 'done' : 'todo',
+  hauteur: () => {
+    if(!document.getElementById('f_height_work').checked) return 'off';
+    return (val('f_height_sauvetage') && val('f_height_vigie')) ? 'done' : 'todo';
+  },
+  toit: () => {
+    if(!document.getElementById('f_roof_work').checked) return 'off';
+    return val('f_roof_vigie') ? 'done' : 'todo';
+  },
+  chaud: () => {
+    if(!document.getElementById('f_hot_work').checked) return 'off';
+    return val('f_hot_surv') ? 'done' : 'todo';
+  },
+  statut: () => 'done',
+};
+const SECTION_STATUS_LABELS = { done: '✓ Renseigné', todo: 'À compléter', off: 'Non requis' };
+function updateSectionStatuses(){
+  Object.keys(SECTION_STATUS_RULES).forEach(id=>{
+    const el = document.getElementById('secstat-'+id);
+    if(!el) return;
+    const state = SECTION_STATUS_RULES[id]();
+    el.textContent = SECTION_STATUS_LABELS[state];
+    el.className = 'sec-status sec-status--' + state;
+  });
+}
+
 // ---------- Compteurs de sélection sur les listes de vérification ----------
 const RISK_COUNT_GROUPS = [
   ['risquesA','countA'], ['risquesB','countB'], ['risquesC','countC'],
@@ -191,7 +224,9 @@ function refreshRiskCounts(){
 }
 document.getElementById('view-form').addEventListener('change', e=>{
   if(e.target.matches('input[type=checkbox]')) refreshRiskCounts();
+  updateSectionStatuses();
 });
+document.getElementById('view-form').addEventListener('input', updateSectionStatuses);
 
 // ---------- Secteurs (registre uniquement — le formulaire n'assigne plus de secteur) ----------
 async function loadSectorsIntoSelects(){
@@ -217,6 +252,7 @@ function resetForm(){
   document.getElementById('f_statut').value = 'Actif';
   ['height','bonbonne','roof','hot'].forEach(syncToggleState);
   refreshRiskCounts();
+  updateSectionStatuses();
 }
 
 async function loadNextPermitNum(){
@@ -344,6 +380,7 @@ function populateFormFromPermit(p){
 
   document.getElementById('f_statut').value = p.statut || 'Actif';
   refreshRiskCounts();
+  updateSectionStatuses();
 }
 
 // ---------- Registre ----------
@@ -373,6 +410,8 @@ async function loadRegistre(page){
 }
 
 function renderStats(stats){
+  const countBadge = document.getElementById('registreCount');
+  if(countBadge) countBadge.textContent = stats.total||0;
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="n">${stats.total||0}</div><div class="l">Total permis</div></div>
     <div class="stat"><div class="n" style="color:var(--vert)">${stats.actifs||0}</div><div class="l">Actifs</div></div>
