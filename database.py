@@ -160,6 +160,15 @@ def init_db():
         if "reception_le" not in existing_cols:
             conn.execute("ALTER TABLE permits ADD COLUMN reception_le TEXT")
 
+        # Migration : archivage. Un permis n'est plus jamais supprimé (c'est un
+        # document légal) : il est archivé, retiré du registre courant mais
+        # conservé avec son historique et ses signatures.
+        if "archive_le" not in existing_cols:
+            conn.execute("ALTER TABLE permits ADD COLUMN archive_le TEXT")
+        if "archive_par" not in existing_cols:
+            conn.execute("ALTER TABLE permits ADD COLUMN archive_par TEXT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_permits_archive ON permits(archive_le)")
+
 
 def row_to_dict(row):
     if row is None:

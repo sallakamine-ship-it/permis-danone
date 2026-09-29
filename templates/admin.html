@@ -50,6 +50,7 @@
         <span id="userNameDisplay">—</span>
         <span class="role-tag" id="userRoleDisplay">—</span>
       </div>
+      <button class="btn-outline-danger" onclick="openPasswordModal()" title="Changer mon mot de passe">🔑</button>
       <button class="btn-outline-danger" onclick="logout()">⎋ Déconnexion</button>
     </div>
   </header>
@@ -391,7 +392,7 @@
         <button class="btn btn-primary" id="editBtn" onclick="editCurrentPermit()">✏️ Réviser</button>
         <button class="btn btn-secondary" onclick="printCurrentPermit()">🖨️ Imprimer</button>
         <button class="btn btn-secondary" id="closeBtn" onclick="openCloseModal()">✅ Fermer le permis (signatures)</button>
-        <button class="btn btn-danger" id="deleteBtn" onclick="deleteCurrentPermit()">🗑️ Supprimer</button>
+        <button class="btn btn-danger" id="deleteBtn" onclick="deleteCurrentPermit()">🗄️ Archiver</button>
       </div>
     </div>
 
@@ -429,7 +430,7 @@
       <div class="add-user-row">
         <div><label>Nom d'utilisateur</label><input type="text" id="newUserName" placeholder="prenom.nom"></div>
         <div><label>Nom complet</label><input type="text" id="newUserFull" placeholder="Prénom Nom"></div>
-        <div><label>Mot de passe</label><input type="text" id="newUserPass" placeholder="Mot de passe"></div>
+        <div><label>Mot de passe</label><input type="password" id="newUserPass" placeholder="10 caractères minimum" autocomplete="new-password"></div>
         <div><label>Rôle</label>
           <select id="newUserRole"><option value="donneur">Donneur d'ordre</option><option value="admin">Administrateur</option></select>
         </div>
@@ -461,6 +462,24 @@
     <div class="actions">
       <button class="btn btn-primary" onclick="confirmClose()">✅ Confirmer la fermeture</button>
       <button class="btn btn-secondary" onclick="closeCloseModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALE MOT DE PASSE ============ -->
+<div id="pwModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;display:flex;align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:420px;width:100%">
+    <div class="permis-head"><h1 style="font-size:16px" id="pwTitle">Changer mon mot de passe</h1></div>
+    <div class="section">
+      <div id="pwCurrentRow"><label>Mot de passe actuel</label><input type="password" id="pwCurrent" autocomplete="current-password"></div>
+      <label style="margin-top:10px">Nouveau mot de passe (10 caractères minimum)</label>
+      <input type="password" id="pwNew" autocomplete="new-password">
+      <label style="margin-top:10px">Confirmer le nouveau mot de passe</label>
+      <input type="password" id="pwConfirm" autocomplete="new-password">
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="submitPassword()">✅ Enregistrer</button>
+      <button class="btn btn-secondary" onclick="closePasswordModal()">Annuler</button>
     </div>
   </div>
 </div>

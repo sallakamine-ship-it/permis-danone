@@ -76,7 +76,9 @@ function setChecks(grp, values){
   values = values || [];
   document.querySelectorAll(`input[data-grp="${grp}"]`).forEach(c=>{ c.checked = values.includes(c.value); });
 }
-function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Une signature n'est affichée que si c'est bien une image PNG en data-URL.
+function safeSig(src){ return (typeof src==='string' && src.startsWith('data:image/png;base64,')) ? src : ''; }
 function val(id){ const e=document.getElementById(id); return e ? (e.value||'').trim() : ''; }
 
 let tt;
@@ -516,8 +518,8 @@ function renderDetail(p){
       <b>Fermé le :</b> ${esc((p.ferme_le||'').replace('T',' ').slice(0,16))}<br>`;
     if(p.signature_donneur){
       html += `<div style="display:flex;gap:20px;margin-top:8px;flex-wrap:wrap">
-        <div><div style="font-size:11px;color:var(--gris)">Signature donneur d'ordre</div><img src="${p.signature_donneur}" style="max-width:200px;border:1px solid #ddd;border-radius:4px"></div>
-        <div><div style="font-size:11px;color:var(--gris)">Signature exécutant</div><img src="${p.signature_executant}" style="max-width:200px;border:1px solid #ddd;border-radius:4px"></div>
+        <div><div style="font-size:11px;color:var(--gris)">Signature donneur d'ordre</div><img src="${esc(safeSig(p.signature_donneur))}" style="max-width:200px;border:1px solid #ddd;border-radius:4px"></div>
+        <div><div style="font-size:11px;color:var(--gris)">Signature exécutant</div><img src="${esc(safeSig(p.signature_executant))}" style="max-width:200px;border:1px solid #ddd;border-radius:4px"></div>
       </div>`;
     }
     html += `</div>`;
@@ -525,11 +527,13 @@ function renderDetail(p){
 
   document.getElementById('detailContent').innerHTML = html;
   document.getElementById('closeBtn').style.display = p.statut === 'Fermé' ? 'none' : 'inline-block';
+  // Un permis fermé est verrouillé : la révision n'est plus proposée.
+  document.getElementById('editBtn').style.display = p.statut === 'Fermé' ? 'none' : 'inline-block';
 
   const photoGrid = document.getElementById('photoGrid');
   photoGrid.innerHTML = (p.photos||[]).map(ph=>`
     <div class="photo-thumb">
-      <img src="/uploads/${ph.filename}">
+      <img src="/uploads/${encodeURIComponent(ph.filename)}">
       <button onclick="deletePhoto(${ph.id})" title="Supprimer">✕</button>
     </div>`).join('') || '<p class="note">Aucune photo pour ce permis.</p>';
 
@@ -548,10 +552,10 @@ function editCurrentPermit(){
 }
 
 async function deleteCurrentPermit(){
-  if(currentUser.role !== 'admin'){ toast('⚠️ Seul un administrateur peut supprimer un permis', true); return; }
-  if(!confirm('Supprimer définitivement ce permis ? Cette action est irréversible.')) return;
+  if(currentUser.role !== 'admin'){ toast('⚠️ Seul un administrateur peut archiver un permis', true); return; }
+  if(!confirm('Archiver ce permis ? Il disparaît du registre mais reste conservé avec son historique et ses signatures.')) return;
   await api(`/api/permits/${currentPermit.id}`, {method:'DELETE'});
-  toast('Permis supprimé');
+  toast('Permis archivé');
   show('registre');
 }
 
@@ -704,9 +708,12 @@ async function confirmClose(){
   const signature_donneur = cDon.toDataURL('image/png');
   const signature_executant = cExe.toDataURL('image/png');
   try{
-    currentPermit = await api(`/api/permits/${currentPermit.id}/close`, {
+    await api(`/api/permits/${currentPermit.id}/close`, {
       method:'POST', body: JSON.stringify({signature_donneur, signature_executant})
     });
+    // Relit le permis complet (photos et historique inclus) : la réponse de
+    // fermeture ne contient que le permis lui-même.
+    currentPermit = await api(`/api/permits/${currentPermit.id}`);
     closeCloseModal();
     renderDetail(currentPermit);
     toast('✅ Permis fermé officiellement');
@@ -714,8 +721,10 @@ async function confirmClose(){
 }
 
 // ---------- Secteurs & QR ----------
+let sectorsCache = [];
 async function loadSecteurs(){
   const sectors = await api('/api/sectors');
+  sectorsCache = sectors;
   const list = document.getElementById('sectorsList');
   if(!sectors.length){ list.innerHTML = '<p class="note" style="padding:14px 18px">Aucun secteur créé.</p>'; return; }
   list.innerHTML = sectors.map(s=>`
@@ -725,8 +734,8 @@ async function loadSecteurs(){
         <div class="note">/secteur/${esc(s.slug)}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
-        <img src="/api/sectors/${s.slug}/qrcode.png" style="width:70px;height:70px;border:1px solid #ddd;border-radius:6px">
-        <button class="btn btn-secondary btn-sm" onclick="printSectorQR('${esc(s.slug)}','${esc(s.name).replace(/'/g,"\\'")}')">🖨️ Imprimer</button>
+        <img src="/api/sectors/${encodeURIComponent(s.slug)}/qrcode.png" style="width:70px;height:70px;border:1px solid #ddd;border-radius:6px">
+        <button class="btn btn-secondary btn-sm" onclick="printSectorQR(${s.id})">🖨️ Imprimer</button>
         ${currentUser.role==='admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteSector(${s.id})">🗑️</button>` : ''}
       </div>
     </div>`).join('');
@@ -750,7 +759,10 @@ async function deleteSector(id){
   loadSecteurs(); loadSectorsIntoSelects();
 }
 
-function printSectorQR(slug, name){
+function printSectorQR(sectorId){
+  const sector = sectorsCache.find(x=>x.id===sectorId);
+  if(!sector) return;
+  const slug = encodeURIComponent(sector.slug), name = esc(sector.name);
   const w = window.open('', '', 'width=500,height=650');
   w.document.write(`<html><head><title>QR — ${name}</title><style>
     body{font-family:Arial;text-align:center;padding:40px}
@@ -782,7 +794,10 @@ async function loadUsers(){
   document.getElementById('usersBody').innerHTML = users.map(u=>`
     <tr>
       <td><b>${esc(u.username)}</b></td><td>${esc(u.full_name)}</td><td>${roleLabel[u.role]||u.role}</td>
-      <td>${u.id !== currentUser.uid ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️</button>` : '<span class="note">(vous)</span>'}</td>
+      <td>${u.id !== currentUser.uid
+        ? `<button class="btn btn-secondary btn-sm" title="Réinitialiser le mot de passe" onclick="openPasswordModal(${u.id})">🔑</button>
+           <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️</button>`
+        : '<span class="note">(vous)</span>'}</td>
     </tr>`).join('');
 }
 
@@ -803,6 +818,35 @@ async function deleteUser(id){
   if(!confirm('Supprimer cet utilisateur ?')) return;
   await api(`/api/users/${id}`, {method:'DELETE'});
   loadUsers();
+}
+
+// ---------- Changement de mot de passe ----------
+let passwordTargetId = null; // null = mon propre mot de passe
+
+function openPasswordModal(userId){
+  passwordTargetId = userId || null;
+  document.getElementById('pwTitle').textContent = passwordTargetId ? "Réinitialiser le mot de passe d'un utilisateur" : 'Changer mon mot de passe';
+  document.getElementById('pwCurrentRow').style.display = passwordTargetId ? 'none' : 'block';
+  ['pwCurrent','pwNew','pwConfirm'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('pwModal').classList.remove('hidden');
+}
+function closePasswordModal(){ document.getElementById('pwModal').classList.add('hidden'); }
+
+async function submitPassword(){
+  const current = document.getElementById('pwCurrent').value;
+  const next = document.getElementById('pwNew').value;
+  const confirmation = document.getElementById('pwConfirm').value;
+  if(next.length < 10){ toast('⚠️ Le mot de passe doit contenir au moins 10 caractères', true); return; }
+  if(next !== confirmation){ toast('⚠️ Les deux mots de passe ne correspondent pas', true); return; }
+  try{
+    if(passwordTargetId){
+      await api(`/api/users/${passwordTargetId}/password`, {method:'PUT', body: JSON.stringify({new_password: next})});
+    }else{
+      await api('/api/auth/change-password', {method:'POST', body: JSON.stringify({current_password: current, new_password: next})});
+    }
+    closePasswordModal();
+    toast('✅ Mot de passe mis à jour');
+  }catch(e){ toast('⚠️ ' + e.message, true); }
 }
 
 // ---------- Démarrage ----------

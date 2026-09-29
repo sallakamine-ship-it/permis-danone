@@ -16,8 +16,13 @@ import json
 import re
 import time
 import uuid
+import base64
+import sqlite3
+import asyncio
+import binascii
 import secrets
 from collections import defaultdict, deque
+from contextlib import asynccontextmanager
 from datetime import datetime, date
 from typing import Optional
 
@@ -57,13 +62,69 @@ else:
         f.write(SECRET_KEY)
 
 serializer = URLSafeTimedSerializer(SECRET_KEY, salt="session")
+# Jeton court qui autorise l'affichage d'une photo sur la page publique d'un
+# sous-traitant (émis seulement après une recherche num + entreprise réussie).
+photo_serializer = URLSafeTimedSerializer(SECRET_KEY, salt="photo")
+PHOTO_TOKEN_MAX_AGE = 60 * 60  # 1h
 SESSION_COOKIE = "danone_session"
 SESSION_MAX_AGE = 60 * 60 * 12  # 12h
 
-app = FastAPI(title="Permis de travail de chantier — Danone")
+MIN_PASSWORD_LENGTH = 10
+AUTO_CLOSE_INTERVAL_SECONDS = 15 * 60
+PERMIT_STATUSES = ("Brouillon", "Actif", "Fermé")
+# On ne peut créer ou modifier un permis qu'en Brouillon ou Actif : « Fermé »
+# n'est atteint que par la fermeture à deux signatures ou par l'échéance.
+EDITABLE_STATUSES = ("Brouillon", "Actif")
+MAX_FIELD_LENGTH = 5000
+MAX_SIGNATURE_BYTES = 300 * 1024
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Ferme périodiquement les permis expirés, même si personne ne consulte
+    le registre (en plus de la vérification faite à chaque lecture)."""
+    async def loop():
+        while True:
+            try:
+                await asyncio.to_thread(close_all_expired)
+            except Exception as exc:  # ne jamais faire tomber le serveur
+                print(f"[fermeture automatique] erreur : {exc}")
+            await asyncio.sleep(AUTO_CLOSE_INTERVAL_SECONDS)
+
+    task = asyncio.create_task(loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+
+
+app = FastAPI(title="Permis de travail de chantier — Danone", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    # Les gabarits utilisent des scripts et styles intégrés : 'unsafe-inline'
+    # reste nécessaire tant qu'ils n'ont pas été déplacés dans des fichiers.
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; "
+        "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+    )
+    if is_https_request(request):
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
 
 init_db()
 
@@ -155,20 +216,26 @@ def get_client_ip(request: Request) -> str:
     visiteurs comme une seule et même IP."""
     forwarded_for = request.headers.get("x-forwarded-for", "")
     if forwarded_for:
-        first_ip = forwarded_for.split(",")[0].strip()
-        if first_ip:
-            return first_ip
+        parts = [p.strip() for p in forwarded_for.split(",") if p.strip()]
+        # TRUSTED_PROXY_HOPS = nombre de proxys de confiance devant l'app : on
+        # lit alors l'adresse ajoutée par le dernier d'entre eux, qu'un visiteur
+        # ne peut pas falsifier. Sans réglage, on garde la première adresse
+        # (falsifiable) — les limites par nom d'utilisateur / par permis
+        # compensent.
+        hops = os.environ.get("TRUSTED_PROXY_HOPS", "")
+        if hops.isdigit() and int(hops) >= 1 and len(parts) >= int(hops):
+            return parts[-int(hops)]
+        if parts:
+            return parts[0]
     return request.client.host if request.client else "unknown"
 
 
-def enforce_rate_limit(request: Request, bucket_name: str) -> None:
-    client_ip = get_client_ip(request)
-    key = (bucket_name, client_ip)
+def _check_bucket(key: tuple, max_attempts: int) -> None:
     now = time.monotonic()
     attempts = _rate_limit_buckets[key]
     while attempts and now - attempts[0] > RATE_LIMIT_WINDOW_SECONDS:
         attempts.popleft()
-    if len(attempts) >= RATE_LIMIT_MAX_ATTEMPTS:
+    if len(attempts) >= max_attempts:
         retry_after = max(1, int(RATE_LIMIT_WINDOW_SECONDS - (now - attempts[0])))
         raise HTTPException(
             status_code=429,
@@ -178,11 +245,31 @@ def enforce_rate_limit(request: Request, bucket_name: str) -> None:
     attempts.append(now)
 
 
+def enforce_rate_limit(request: Request, bucket_name: str, subject: Optional[str] = None,
+                       subject_max: int = 20) -> None:
+    """Limite par IP, et en plus par « sujet » (nom d'utilisateur, numéro de
+    permis) : l'en-tête X-Forwarded-For peut être falsifié par le visiteur, donc
+    la limite par IP seule ne suffit pas à bloquer un essai répété de mots de
+    passe ou de noms d'entreprise."""
+    _check_bucket((bucket_name, get_client_ip(request)), RATE_LIMIT_MAX_ATTEMPTS)
+    if subject:
+        _check_bucket((bucket_name + ":subject", subject.strip().lower()[:80]), subject_max)
+
+
 def require_session(request: Request) -> dict:
+    """Session valide ET utilisateur encore existant : le rôle est relu en base
+    à chaque requête, donc une suppression de compte ou un changement de rôle
+    prend effet immédiatement (pas seulement à l'expiration du cookie)."""
     session = read_session(request)
     if not session:
         raise HTTPException(status_code=401, detail="Non authentifié")
-    return session
+    with db() as conn:
+        user = conn.execute(
+            "SELECT id, username, full_name, role FROM users WHERE id = ?", (session["uid"],)
+        ).fetchone()
+    if not user:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    return {"uid": user["id"], "username": user["username"], "role": user["role"], "full_name": user["full_name"]}
 
 
 def require_admin(request: Request) -> dict:
@@ -190,6 +277,57 @@ def require_admin(request: Request) -> dict:
     if session["role"] != "admin":
         raise HTTPException(status_code=403, detail="Accès admin requis")
     return session
+
+
+# ---------------------------------------------------------------------------
+# Validation des entrées
+# ---------------------------------------------------------------------------
+_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+_DATA_URL_PREFIX = "data:image/png;base64,"
+
+
+def validate_signature(value) -> str:
+    """Une signature doit être une image PNG encodée en data-URL, de taille
+    raisonnable. Elle est ensuite affichée dans <img src=...> : accepter une
+    chaîne quelconque permettrait d'injecter du code dans la page."""
+    if not isinstance(value, str) or not value.startswith(_DATA_URL_PREFIX):
+        raise HTTPException(status_code=400, detail="Signature invalide (image PNG requise)")
+    try:
+        raw = base64.b64decode(value[len(_DATA_URL_PREFIX):], validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(status_code=400, detail="Signature invalide (encodage incorrect)")
+    if not raw.startswith(_PNG_MAGIC):
+        raise HTTPException(status_code=400, detail="Signature invalide (image PNG requise)")
+    if len(raw) > MAX_SIGNATURE_BYTES:
+        raise HTTPException(status_code=400, detail="Signature trop volumineuse")
+    return value
+
+
+async def read_json(request: Request) -> dict:
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Corps de requête JSON invalide")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Corps de requête JSON invalide")
+    return body
+
+
+def check_text_lengths(body: dict) -> None:
+    for key, value in body.items():
+        if isinstance(value, str) and len(value) > MAX_FIELD_LENGTH:
+            raise HTTPException(status_code=400, detail=f"Champ trop long : {key}")
+
+
+def validate_password(password: str) -> None:
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Le mot de passe doit contenir au moins {MIN_PASSWORD_LENGTH} caractères",
+        )
+    if len(password.encode()) > 72:
+        # bcrypt ignore tout ce qui dépasse 72 octets : on refuse plutôt que de tronquer en silence.
+        raise HTTPException(status_code=400, detail="Le mot de passe est trop long (72 octets maximum)")
 
 
 # ---------------------------------------------------------------------------
@@ -213,43 +351,76 @@ def add_status_history(conn, permit_id: int, statut: str, par: str, note: str = 
     )
 
 
+def _is_expired(p: dict) -> bool:
+    if p["statut"] != "Actif" or not p["date_fin"]:
+        return False
+    try:
+        return datetime.strptime(p["date_fin"], "%Y-%m-%d").date() < date.today()
+    except ValueError:
+        return False
+
+
+def _close_expired_row(conn, p: dict) -> dict:
+    ferme_le = datetime.utcnow().isoformat()
+    conn.execute(
+        "UPDATE permits SET statut='Fermé', ferme_le=?, updated_at=datetime('now') WHERE id=? AND statut='Actif'",
+        (ferme_le, p["id"]),
+    )
+    add_status_history(conn, p["id"], "Fermé", "Système", "Fermeture automatique — date de fin dépassée")
+    p["statut"] = "Fermé"
+    p["ferme_le"] = ferme_le
+    return p
+
+
 def auto_close_if_expired(conn, permit_row) -> dict:
     """Ferme automatiquement un permis Actif dont la date de fin est dépassée.
-    Évalué à la lecture (pas de tâche planifiée réelle sans serveur cron dédié —
-    limite documentée : la fermeture se déclenche au prochain accès au permis)."""
+    Appelé à chaque lecture ; close_all_expired() fait la même chose en tâche
+    de fond toutes les 15 minutes."""
     p = row_to_dict(permit_row)
-    if p["statut"] == "Actif" and p["date_fin"]:
-        try:
-            fin = datetime.strptime(p["date_fin"], "%Y-%m-%d").date()
-        except ValueError:
-            return p
-        if fin < date.today():
-            ferme_le = datetime.utcnow().isoformat()
-            conn.execute(
-                "UPDATE permits SET statut='Fermé', ferme_le=?, updated_at=datetime('now') WHERE id=?",
-                (ferme_le, p["id"]),
-            )
-            add_status_history(conn, p["id"], "Fermé", "Système", "Fermeture automatique — date de fin dépassée")
-            p["statut"] = "Fermé"
-            p["ferme_le"] = ferme_le
+    if _is_expired(p):
+        _close_expired_row(conn, p)
     return p
+
+
+def close_all_expired() -> int:
+    """Ferme tous les permis Actifs expirés. Retourne le nombre de permis fermés."""
+    closed = 0
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM permits WHERE statut='Actif' AND date_fin IS NOT NULL AND date_fin != '' "
+            "AND date_fin < ? AND archive_le IS NULL",
+            (date.today().isoformat(),),
+        ).fetchall()
+        for row in rows:
+            p = row_to_dict(row)
+            if _is_expired(p):
+                _close_expired_row(conn, p)
+                closed += 1
+    return closed
 
 
 # ===========================================================================
 # AUTHENTIFICATION
 # ===========================================================================
+# Hash factice comparé quand l'utilisateur n'existe pas : la durée de la
+# réponse ne révèle plus si un nom d'utilisateur existe.
+_DUMMY_HASH = bcrypt.hashpw(b"dummy-password-for-timing", bcrypt.gensalt()).decode()
+
+
 @app.post("/api/auth/login")
 async def login(request: Request, response: Response):
-    enforce_rate_limit(request, "auth_login")
-    body = await request.json()
-    username = (body.get("username") or "").strip()
-    password = body.get("password") or ""
+    body = await read_json(request)
+    username = str(body.get("username") or "").strip()
+    password = str(body.get("password") or "")
+    enforce_rate_limit(request, "auth_login", subject=username or "(vide)", subject_max=10)
     with db() as conn:
         user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-    if not user or not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+    hash_to_check = user["password_hash"] if user else _DUMMY_HASH
+    ok = bcrypt.checkpw(password.encode()[:72], hash_to_check.encode())
+    if not user or not ok:
         raise HTTPException(status_code=401, detail="Nom d'utilisateur ou mot de passe incorrect")
     cookie_val = create_session_cookie(user["id"], user["username"], user["role"], user["full_name"])
-    resp = JSONResponse({"ok": True, "username": user["username"], "role": user["role"], "full_name": user["full_name"]})
+    resp = JSONResponse({"ok": True, "uid": user["id"], "username": user["username"], "role": user["role"], "full_name": user["full_name"]})
     resp.set_cookie(
         SESSION_COOKIE, cookie_val, max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
         secure=is_https_request(request),
@@ -266,10 +437,30 @@ async def logout():
 
 @app.get("/api/auth/me")
 async def me(request: Request):
-    session = read_session(request)
-    if not session:
+    try:
+        session = require_session(request)
+    except HTTPException:
         return JSONResponse({"authenticated": False})
     return JSONResponse({"authenticated": True, **session})
+
+
+@app.post("/api/auth/change-password")
+async def change_password(request: Request, session=Depends(require_session)):
+    """Changement de son propre mot de passe (ancien mot de passe exigé)."""
+    body = await read_json(request)
+    current = str(body.get("current_password") or "")
+    new = str(body.get("new_password") or "")
+    enforce_rate_limit(request, "change_password", subject=session["username"], subject_max=10)
+    validate_password(new)
+    with db() as conn:
+        user = conn.execute("SELECT * FROM users WHERE id = ?", (session["uid"],)).fetchone()
+        if not user or not bcrypt.checkpw(current.encode()[:72], user["password_hash"].encode()):
+            raise HTTPException(status_code=403, detail="Mot de passe actuel incorrect")
+        if bcrypt.checkpw(new.encode(), user["password_hash"].encode()):
+            raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit être différent de l'ancien")
+        h = bcrypt.hashpw(new.encode(), bcrypt.gensalt()).decode()
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (h, session["uid"]))
+    return {"ok": True}
 
 
 # ===========================================================================
@@ -284,13 +475,16 @@ async def list_users(session=Depends(require_admin)):
 
 @app.post("/api/users")
 async def create_user(request: Request, session=Depends(require_admin)):
-    body = await request.json()
-    username = (body.get("username") or "").strip()
-    password = body.get("password") or ""
-    full_name = (body.get("full_name") or "").strip()
+    body = await read_json(request)
+    username = str(body.get("username") or "").strip()
+    password = str(body.get("password") or "")
+    full_name = str(body.get("full_name") or "").strip()
     role = body.get("role")
     if not username or not password or not full_name or role not in ("admin", "donneur"):
         raise HTTPException(status_code=400, detail="Champs manquants ou rôle invalide")
+    if len(username) > 60 or len(full_name) > 120:
+        raise HTTPException(status_code=400, detail="Nom d'utilisateur ou nom complet trop long")
+    validate_password(password)
     h = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     try:
         with db() as conn:
@@ -298,8 +492,22 @@ async def create_user(request: Request, session=Depends(require_admin)):
                 "INSERT INTO users (username, password_hash, full_name, role) VALUES (?,?,?,?)",
                 (username, h, full_name, role),
             )
-    except Exception:
+    except sqlite3.IntegrityError:
         raise HTTPException(status_code=409, detail="Ce nom d'utilisateur existe déjà")
+    return {"ok": True}
+
+
+@app.put("/api/users/{user_id}/password")
+async def reset_user_password(user_id: int, request: Request, session=Depends(require_admin)):
+    """Réinitialisation du mot de passe d'un utilisateur par un administrateur."""
+    body = await read_json(request)
+    new = str(body.get("new_password") or "")
+    validate_password(new)
+    h = bcrypt.hashpw(new.encode(), bcrypt.gensalt()).decode()
+    with db() as conn:
+        cur = conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (h, user_id))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Utilisateur introuvable")
     return {"ok": True}
 
 
@@ -308,6 +516,13 @@ async def delete_user(user_id: int, session=Depends(require_admin)):
     if user_id == session["uid"]:
         raise HTTPException(status_code=400, detail="Impossible de supprimer votre propre compte")
     with db() as conn:
+        target = conn.execute("SELECT role FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+        if target["role"] == "admin":
+            admins = conn.execute("SELECT COUNT(*) c FROM users WHERE role = 'admin'").fetchone()["c"]
+            if admins <= 1:
+                raise HTTPException(status_code=400, detail="Impossible de supprimer le dernier administrateur")
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
     return {"ok": True}
 
@@ -331,15 +546,17 @@ async def list_sectors(session=Depends(require_session)):
 
 @app.post("/api/sectors")
 async def create_sector(request: Request, session=Depends(require_session)):
-    body = await request.json()
-    name = (body.get("name") or "").strip()
+    body = await read_json(request)
+    name = str(body.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Nom de secteur requis")
+    if len(name) > 100:
+        raise HTTPException(status_code=400, detail="Nom de secteur trop long (100 caractères maximum)")
     slug = slugify(name)
     try:
         with db() as conn:
             conn.execute("INSERT INTO sectors (name, slug) VALUES (?,?)", (name, slug))
-    except Exception:
+    except sqlite3.IntegrityError:
         raise HTTPException(status_code=409, detail="Ce secteur existe déjà")
     return {"ok": True, "slug": slug}
 
@@ -372,9 +589,42 @@ async def sector_qrcode(slug: str, request: Request):
 # ===========================================================================
 REQUIRED_BASE = ["donneur", "executant", "description", "lieux"]
 
+TEXT_FIELDS = [
+    "donneur", "donneur_tel", "entreprise", "executant", "executant_tel",
+    "description", "lieux", "zone", "date_debut", "date_fin", "zone_conforme", "zone_comm",
+    "height_acces", "height_m", "height_sauvetage", "height_vigie",
+    "bonbonne_type", "bonbonne_nombre", "bonbonne_levage",
+    "roof_type", "roof_resistance", "roof_perimetre", "roof_vigie",
+    "hot_nature", "hot_debut", "hot_fin", "hot_surv", "hot_ext",
+]
+LIST_FIELDS = ["risques_a", "risques_b", "risques_c", "risques_hauteur", "risques_bonbonne", "risques_toit", "risques_hot"]
+BOOL_FIELDS = ["height_work", "bonbonne_work", "roof_work", "hot_work"]
+
+
+def _clean_list(value) -> list:
+    if not isinstance(value, list):
+        return []
+    return [str(v)[:300] for v in value[:100] if isinstance(v, (str, int, float))]
+
+
+def _clean_text(value):
+    if value is None:
+        return None
+    return str(value).strip()
+
+
+def _parse_iso_date(value: Optional[str], label: str) -> Optional[date]:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Date invalide pour {label} (format AAAA-MM-JJ attendu)")
+
 
 def validate_permit_payload(body: dict):
-    missing = [f for f in REQUIRED_BASE if not (body.get(f) or "").strip()]
+    check_text_lengths(body)
+    missing = [f for f in REQUIRED_BASE if not str(body.get(f) or "").strip()]
     if body.get("height_work") or body.get("roof_work"):
         if not (body.get("height_vigie") or body.get("roof_vigie")):
             missing.append("vigie (obligatoire si travail en hauteur ou au toit)")
@@ -384,45 +634,53 @@ def validate_permit_payload(body: dict):
         missing.append("surveillance incendie (obligatoire si travail à chaud)")
     if missing:
         raise HTTPException(status_code=400, detail="Champs obligatoires manquants : " + ", ".join(missing))
+    debut = _parse_iso_date(str(body.get("date_debut") or "").strip() or None, "la date de début")
+    fin = _parse_iso_date(str(body.get("date_fin") or "").strip() or None, "la date de fin")
+    if debut and fin and fin < debut:
+        raise HTTPException(status_code=400, detail="La date de fin est antérieure à la date de début")
+
+
+def _validate_sector(conn, sector_id):
+    if sector_id in (None, ""):
+        return None
+    try:
+        sector_id = int(sector_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Secteur invalide")
+    if not conn.execute("SELECT 1 FROM sectors WHERE id = ?", (sector_id,)).fetchone():
+        raise HTTPException(status_code=400, detail="Secteur introuvable")
+    return sector_id
 
 
 @app.post("/api/permits")
 async def create_permit(request: Request, session=Depends(require_session)):
-    body = await request.json()
+    body = await read_json(request)
     validate_permit_payload(body)
-    with db() as conn:
-        num = next_permit_num(conn)
-        cur = conn.execute(
-            """INSERT INTO permits (
-                num, sector_id, donneur, donneur_tel, entreprise, executant, executant_tel,
-                description, lieux, zone, date_debut, date_fin,
-                risques_a, risques_b, risques_c, zone_conforme, zone_comm,
-                height_work, risques_hauteur, height_acces, height_m, height_sauvetage, height_vigie,
-                bonbonne_work, risques_bonbonne, bonbonne_type, bonbonne_nombre, bonbonne_levage,
-                roof_work, risques_toit, roof_type, roof_resistance, roof_perimetre, roof_vigie,
-                hot_work, risques_hot, hot_nature, hot_debut, hot_fin, hot_surv, hot_ext,
-                statut, cree_par
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                num, body.get("sector_id"), body.get("donneur"), body.get("donneur_tel"),
-                body.get("entreprise"), body.get("executant"), body.get("executant_tel"),
-                body.get("description"), body.get("lieux"), body.get("zone"), body.get("date_debut"), body.get("date_fin"),
-                json.dumps(body.get("risques_a", [])), json.dumps(body.get("risques_b", [])),
-                json.dumps(body.get("risques_c", [])), body.get("zone_conforme"), body.get("zone_comm"),
-                int(bool(body.get("height_work"))), json.dumps(body.get("risques_hauteur", [])),
-                body.get("height_acces"), body.get("height_m"), body.get("height_sauvetage"), body.get("height_vigie"),
-                int(bool(body.get("bonbonne_work"))), json.dumps(body.get("risques_bonbonne", [])),
-                body.get("bonbonne_type"), body.get("bonbonne_nombre"), body.get("bonbonne_levage"),
-                int(bool(body.get("roof_work"))), json.dumps(body.get("risques_toit", [])),
-                body.get("roof_type"), body.get("roof_resistance"), body.get("roof_perimetre"), body.get("roof_vigie"),
-                int(bool(body.get("hot_work"))), json.dumps(body.get("risques_hot", [])),
-                body.get("hot_nature"), body.get("hot_debut"), body.get("hot_fin"),
-                body.get("hot_surv"), body.get("hot_ext"),
-                body.get("statut", "Actif"), session["full_name"],
-            ),
+    statut = body.get("statut", "Actif")
+    if statut not in EDITABLE_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail="Un permis se crée en Brouillon ou Actif ; il ne se ferme qu'avec les deux signatures",
         )
+    with db() as conn:
+        # Verrou d'écriture avant de lire le dernier numéro : deux créations
+        # simultanées ne peuvent plus obtenir le même numéro.
+        conn.execute("BEGIN IMMEDIATE")
+        num = next_permit_num(conn)
+        values = {"num": num, "sector_id": _validate_sector(conn, body.get("sector_id"))}
+        for f in TEXT_FIELDS:
+            values[f] = _clean_text(body.get(f))
+        for f in LIST_FIELDS:
+            values[f] = json.dumps(_clean_list(body.get(f, [])))
+        for f in BOOL_FIELDS:
+            values[f] = int(bool(body.get(f)))
+        values["statut"] = statut
+        values["cree_par"] = session["full_name"]
+        columns = ", ".join(values)
+        placeholders = ", ".join("?" for _ in values)
+        cur = conn.execute(f"INSERT INTO permits ({columns}) VALUES ({placeholders})", list(values.values()))
         permit_id = cur.lastrowid
-        add_status_history(conn, permit_id, body.get("statut", "Actif"), session["full_name"], "Création du permis")
+        add_status_history(conn, permit_id, statut, session["full_name"], "Création du permis")
         row = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
     return row_to_dict(row)
 
@@ -431,9 +689,9 @@ async def create_permit(request: Request, session=Depends(require_session)):
 async def get_next_permit_num(session=Depends(require_session)):
     """Numéro qu'obtiendra le prochain permis créé — affiché sur le formulaire
     de création avant l'enregistrement. Prévisualisation seule : le numéro
-    définitif est (re)calculé et assigné de façon atomique par next_permit_num()
-    au moment du POST /api/permits, donc deux formulaires ouverts en même
-    temps peuvent prévisualiser le même numéro sans conflit réel."""
+    définitif est (re)calculé et assigné de façon atomique au moment du
+    POST /api/permits, donc deux formulaires ouverts en même temps peuvent
+    prévisualiser le même numéro sans conflit réel."""
     with db() as conn:
         num = next_permit_num(conn)
     return {"num": num}
@@ -448,12 +706,15 @@ async def list_permits(
     search: str = "",
     statut: str = "",
     sector_id: Optional[int] = None,
+    archives: bool = False,
 ):
+    if archives and session["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Accès admin requis")
     page = max(1, page)
     page_size = min(max(1, page_size), 100)
     offset = (page - 1) * page_size
 
-    where = []
+    where = ["archive_le IS NOT NULL" if archives else "archive_le IS NULL"]
     params = []
     if search:
         where.append("(num LIKE ? OR entreprise LIKE ? OR executant LIKE ? OR description LIKE ? OR lieux LIKE ? OR donneur LIKE ?)")
@@ -465,7 +726,7 @@ async def list_permits(
     if sector_id:
         where.append("sector_id = ?")
         params.append(sector_id)
-    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+    where_sql = "WHERE " + " AND ".join(where)
 
     with db() as conn:
         total = conn.execute(f"SELECT COUNT(*) c FROM permits {where_sql}", params).fetchone()["c"]
@@ -474,10 +735,15 @@ async def list_permits(
             params + [page_size, offset],
         ).fetchall()
         permits = [auto_close_if_expired(conn, r) for r in rows]
+        # Les images de signature (lourdes) ne servent qu'au détail d'un permis.
+        for permit in permits:
+            for key in ("signature_donneur", "signature_executant", "signature_reception"):
+                permit[key] = bool(permit.get(key))
 
         stats_row = conn.execute(
             "SELECT COUNT(*) total, SUM(CASE WHEN statut='Actif' THEN 1 ELSE 0 END) actifs, "
-            "SUM(height_work) hauteur, SUM(roof_work) toit, SUM(hot_work) chaud FROM permits"
+            "SUM(height_work) hauteur, SUM(roof_work) toit, SUM(hot_work) chaud "
+            "FROM permits WHERE archive_le IS NULL"
         ).fetchone()
 
     return {
@@ -490,12 +756,17 @@ async def list_permits(
     }
 
 
+def _get_visible_permit(conn, permit_id: int, session: dict):
+    row = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
+    if not row or (row["archive_le"] and session["role"] != "admin"):
+        raise HTTPException(status_code=404, detail="Permis introuvable")
+    return row
+
+
 @app.get("/api/permits/{permit_id}")
 async def get_permit(permit_id: int, session=Depends(require_session)):
     with db() as conn:
-        row = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Permis introuvable")
+        row = _get_visible_permit(conn, permit_id, session)
         p = auto_close_if_expired(conn, row)
         history = conn.execute(
             "SELECT * FROM status_history WHERE permit_id = ? ORDER BY id", (permit_id,)
@@ -510,45 +781,59 @@ async def get_permit(permit_id: int, session=Depends(require_session)):
 
 @app.put("/api/permits/{permit_id}")
 async def update_permit(permit_id: int, request: Request, session=Depends(require_session)):
-    body = await request.json()
+    body = await read_json(request)
     validate_permit_payload(body)
-    fields = [
-        "sector_id", "donneur", "donneur_tel", "entreprise", "executant", "executant_tel",
-        "description", "lieux", "zone", "date_debut", "date_fin", "zone_conforme", "zone_comm",
-        "height_acces", "height_m", "height_sauvetage", "height_vigie",
-        "bonbonne_type", "bonbonne_nombre", "bonbonne_levage",
-        "roof_type", "roof_resistance", "roof_perimetre", "roof_vigie",
-        "hot_nature", "hot_debut", "hot_fin", "hot_surv", "hot_ext",
-    ]
-    json_fields = ["risques_a", "risques_b", "risques_c", "risques_hauteur", "risques_bonbonne", "risques_toit", "risques_hot"]
-    bool_fields = ["height_work", "bonbonne_work", "roof_work", "hot_work"]
-
-    set_clauses = []
-    params = []
-    for f in fields:
-        if f in body:
-            set_clauses.append(f"{f} = ?")
-            params.append(body[f])
-    for f in json_fields:
-        if f in body:
-            set_clauses.append(f"{f} = ?")
-            params.append(json.dumps(body[f]))
-    for f in bool_fields:
-        if f in body:
-            set_clauses.append(f"{f} = ?")
-            params.append(int(bool(body[f])))
-    set_clauses.append("updated_at = datetime('now')")
+    if "statut" in body and body["statut"] not in EDITABLE_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail="Le statut ne peut être que Brouillon ou Actif ; la fermeture se fait avec les deux signatures",
+        )
 
     with db() as conn:
-        existing = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
-        if not existing:
-            raise HTTPException(status_code=404, detail="Permis introuvable")
-        params.append(permit_id)
-        conn.execute(f"UPDATE permits SET {', '.join(set_clauses)} WHERE id = ?", params)
+        existing_row = _get_visible_permit(conn, permit_id, session)
+        existing = auto_close_if_expired(conn, existing_row)
+        if existing_row["archive_le"]:
+            raise HTTPException(status_code=409, detail="Ce permis est archivé — modification impossible")
+        if existing["statut"] == "Fermé":
+            raise HTTPException(status_code=409, detail="Ce permis est fermé — il n'est plus modifiable")
 
-        if "statut" in body and body["statut"] != existing["statut"]:
-            conn.execute("UPDATE permits SET statut = ? WHERE id = ?", (body["statut"], permit_id))
-            add_status_history(conn, permit_id, body["statut"], session["full_name"], body.get("status_note"))
+        updates = {}
+        changed = []
+        if "sector_id" in body:
+            updates["sector_id"] = _validate_sector(conn, body["sector_id"])
+            if updates["sector_id"] != existing["sector_id"]:
+                changed.append("sector_id")
+        for f in TEXT_FIELDS:
+            if f in body:
+                updates[f] = _clean_text(body[f])
+                if (updates[f] or "") != str(existing[f] or ""):
+                    changed.append(f)
+        for f in LIST_FIELDS:
+            if f in body:
+                updates[f] = json.dumps(_clean_list(body[f]))
+                if _clean_list(body[f]) != existing[f]:
+                    changed.append(f)
+        for f in BOOL_FIELDS:
+            if f in body:
+                updates[f] = int(bool(body[f]))
+                if updates[f] != int(bool(existing[f])):
+                    changed.append(f)
+        new_statut = body.get("statut", existing["statut"])
+        status_changed = new_statut != existing["statut"]
+        if status_changed:
+            updates["statut"] = new_statut
+
+        set_sql = ", ".join(f"{k} = ?" for k in updates) + (", " if updates else "") + "updated_at = datetime('now')"
+        conn.execute(f"UPDATE permits SET {set_sql} WHERE id = ?", list(updates.values()) + [permit_id])
+
+        if status_changed:
+            note = body.get("status_note") or "Changement de statut"
+            add_status_history(conn, permit_id, new_statut, session["full_name"], str(note)[:500])
+        if changed:
+            add_status_history(
+                conn, permit_id, new_statut, session["full_name"],
+                "Permis modifié — champs : " + ", ".join(changed),
+            )
 
         row = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
     return row_to_dict(row)
@@ -556,47 +841,81 @@ async def update_permit(permit_id: int, request: Request, session=Depends(requir
 
 @app.delete("/api/permits/{permit_id}")
 async def delete_permit(permit_id: int, session=Depends(require_admin)):
+    """Archive le permis (jamais de suppression : c'est un document légal).
+    Il disparaît du registre courant, mais reste en base avec son historique et
+    ses signatures ; un administrateur peut le retrouver via ?archives=true."""
     with db() as conn:
-        conn.execute("DELETE FROM permits WHERE id = ?", (permit_id,))
-    return {"ok": True}
+        row = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Permis introuvable")
+        if row["archive_le"]:
+            return {"ok": True, "archived": True}
+        conn.execute(
+            "UPDATE permits SET archive_le = ?, archive_par = ?, updated_at = datetime('now') WHERE id = ?",
+            (datetime.utcnow().isoformat(), session["full_name"], permit_id),
+        )
+        add_status_history(conn, permit_id, row["statut"], session["full_name"], "Permis archivé")
+    return {"ok": True, "archived": True}
 
 
 @app.post("/api/permits/{permit_id}/close")
 async def close_permit(permit_id: int, request: Request, session=Depends(require_session)):
     """Fermeture officielle avec double signature électronique."""
-    body = await request.json()
-    sig_donneur = body.get("signature_donneur")
-    sig_executant = body.get("signature_executant")
-    if not sig_donneur or not sig_executant:
+    body = await read_json(request)
+    if not body.get("signature_donneur") or not body.get("signature_executant"):
         raise HTTPException(status_code=400, detail="Les deux signatures (donneur d'ordre et exécutant) sont requises")
+    sig_donneur = validate_signature(body.get("signature_donneur"))
+    sig_executant = validate_signature(body.get("signature_executant"))
     with db() as conn:
-        existing = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
-        if not existing:
-            raise HTTPException(status_code=404, detail="Permis introuvable")
+        existing_row = _get_visible_permit(conn, permit_id, session)
+        existing = auto_close_if_expired(conn, existing_row)
+        if existing_row["archive_le"]:
+            raise HTTPException(status_code=409, detail="Ce permis est archivé")
+        if existing["statut"] == "Fermé":
+            raise HTTPException(status_code=409, detail="Ce permis est déjà fermé")
+        if existing["statut"] != "Actif":
+            raise HTTPException(status_code=400, detail="Seul un permis actif peut être fermé")
         conn.execute(
             "UPDATE permits SET statut='Fermé', signature_donneur=?, signature_executant=?, "
-            "ferme_le=datetime('now'), updated_at=datetime('now') WHERE id=?",
-            (sig_donneur, sig_executant, permit_id),
+            "ferme_le=?, updated_at=datetime('now') WHERE id=?",
+            (sig_donneur, sig_executant, datetime.utcnow().isoformat(), permit_id),
         )
         add_status_history(conn, permit_id, "Fermé", session["full_name"], "Fermeture officielle avec signatures")
         row = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
     return row_to_dict(row)
 
 
+MAX_PHOTO_BYTES = 15 * 1024 * 1024
+
+
+def _looks_like_image(ext: str, head: bytes) -> bool:
+    if ext in (".jpg", ".jpeg"):
+        return head.startswith(b"\xff\xd8\xff")
+    if ext == ".png":
+        return head.startswith(_PNG_MAGIC)
+    if ext == ".webp":
+        return head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    if ext == ".heic":
+        return head[4:8] == b"ftyp"
+    return False
+
+
 @app.post("/api/permits/{permit_id}/photos")
 async def upload_photo(permit_id: int, file: UploadFile = File(...), session=Depends(require_session)):
     with db() as conn:
-        existing = conn.execute("SELECT id FROM permits WHERE id = ?", (permit_id,)).fetchone()
-        if not existing:
+        existing = conn.execute("SELECT id, archive_le FROM permits WHERE id = ?", (permit_id,)).fetchone()
+        if not existing or existing["archive_le"]:
             raise HTTPException(status_code=404, detail="Permis introuvable")
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in (".jpg", ".jpeg", ".png", ".webp", ".heic"):
         raise HTTPException(status_code=400, detail="Format d'image non supporté")
-    filename = f"{permit_id}_{uuid.uuid4().hex[:10]}{ext}"
-    path = os.path.join(UPLOAD_DIR, filename)
-    content = await file.read()
-    if len(content) > 15 * 1024 * 1024:
+    content = await file.read(MAX_PHOTO_BYTES + 1)
+    if len(content) > MAX_PHOTO_BYTES:
         raise HTTPException(status_code=400, detail="Photo trop volumineuse (max 15 Mo)")
+    if not _looks_like_image(ext, content[:16]):
+        raise HTTPException(status_code=400, detail="Le fichier n'est pas une image valide")
+    filename = f"{permit_id}_{uuid.uuid4().hex[:16]}{ext}"
+    path = os.path.join(UPLOAD_DIR, filename)
     with open(path, "wb") as f:
         f.write(content)
     with db() as conn:
@@ -617,6 +936,33 @@ async def delete_photo(photo_id: int, session=Depends(require_session)):
                 os.remove(path)
             conn.execute("DELETE FROM photos WHERE id = ?", (photo_id,))
     return {"ok": True}
+
+
+@app.get("/uploads/{filename}")
+async def serve_upload(filename: str, request: Request, t: Optional[str] = None):
+    """Photos de permis. Avant, tout le dossier était servi sans contrôle ;
+    maintenant il faut soit une session, soit un jeton court émis par la
+    consultation publique (numéro + entreprise valides). Les rapports d'audit,
+    rangés dans un sous-dossier, ne passent jamais par ici."""
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,120}", filename):
+        raise HTTPException(status_code=404, detail="Fichier introuvable")
+    path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Fichier introuvable")
+    authorized = False
+    try:
+        require_session(request)
+        authorized = True
+    except HTTPException:
+        pass
+    if not authorized and t:
+        try:
+            authorized = photo_serializer.loads(t, max_age=PHOTO_TOKEN_MAX_AGE) == filename
+        except (BadSignature, SignatureExpired):
+            authorized = False
+    if not authorized:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    return FileResponse(path, headers={"Cache-Control": "private, max-age=3600"})
 
 
 # ===========================================================================
@@ -706,6 +1052,23 @@ async def delete_audit(audit_id: int, session=Depends(require_session)):
 # ===========================================================================
 # ACCÈS SOUS-TRAITANT — PUBLIC, SANS COMPTE (exigence #3)
 # ===========================================================================
+NOT_FOUND_PUBLIC = "Aucun permis ne correspond à ce numéro et à cette entreprise"
+
+
+def _find_public_permit(conn, num: str, entreprise: str):
+    """Trouve le permis pour un sous-traitant. Même message d'erreur que le
+    numéro n'existe pas ou que l'entreprise ne corresponde pas : on ne
+    confirme jamais l'existence d'un numéro de permis à un inconnu."""
+    row = conn.execute("SELECT * FROM permits WHERE num = ? AND archive_le IS NULL", (num,)).fetchone()
+    if (
+        not row
+        or row["entreprise"] is None
+        or normalize_company_name(entreprise) != normalize_company_name(row["entreprise"])
+    ):
+        raise HTTPException(status_code=404, detail=NOT_FOUND_PUBLIC)
+    return row
+
+
 @app.get("/api/public/lookup")
 async def public_lookup(request: Request, num: str, entreprise: str, sector_slug: Optional[str] = None):
     """Recherche publique par numéro de permis + nom d'entreprise (confirmation).
@@ -713,21 +1076,14 @@ async def public_lookup(request: Request, num: str, entreprise: str, sector_slug
     recherche (aucun secteur n'est assigné à la création) : num + entreprise
     suffisent, quel que soit le QR scanné. sector_slug est accepté pour
     compatibilité mais n'est plus vérifié."""
-    enforce_rate_limit(request, "public_lookup")
     num = (num or "").strip()
     entreprise = (entreprise or "").strip()
     if not num or not entreprise:
         raise HTTPException(status_code=400, detail="Numéro de permis et nom d'entreprise requis")
+    enforce_rate_limit(request, "public_lookup", subject=num, subject_max=20)
 
     with db() as conn:
-        row = conn.execute("SELECT * FROM permits WHERE num = ?", (num,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Aucun permis trouvé avec ce numéro")
-        p = row_to_dict(row)
-
-        if p["entreprise"] is None or normalize_company_name(entreprise) != normalize_company_name(p["entreprise"]):
-            raise HTTPException(status_code=404, detail="Le nom d'entreprise ne correspond pas à ce permis")
-
+        row = _find_public_permit(conn, num, entreprise)
         p = auto_close_if_expired(conn, row)
         photos = conn.execute("SELECT filename FROM photos WHERE permit_id = ?", (p["id"],)).fetchall()
 
@@ -743,7 +1099,9 @@ async def public_lookup(request: Request, num: str, entreprise: str, sector_slug
         "hot_surv", "hot_ext", "statut", "reception_nom", "reception_le",
     ]
     result = {k: p.get(k) for k in safe_fields}
-    result["photos"] = [f"/uploads/{ph['filename']}" for ph in photos]
+    result["photos"] = [
+        f"/uploads/{ph['filename']}?t={photo_serializer.dumps(ph['filename'])}" for ph in photos
+    ]
     return result
 
 
@@ -751,26 +1109,28 @@ async def public_lookup(request: Request, num: str, entreprise: str, sector_slug
 async def public_sign(request: Request):
     """Signature électronique du sous-traitant à la consultation du permis
     (reconnaissance de lecture avant le début des travaux). Publique, mais
-    revérifie num + entreprise comme /api/public/lookup — pas de session."""
-    enforce_rate_limit(request, "public_sign")
-    body = await request.json()
-    num = (body.get("num") or "").strip()
-    entreprise = (body.get("entreprise") or "").strip()
-    nom = (body.get("nom") or "").strip()
-    signature = body.get("signature") or ""
-    if not num or not entreprise or not nom or not signature:
+    revérifie num + entreprise comme /api/public/lookup — pas de session.
+    Une fois signé, le permis ne peut plus être re-signé (ni écrasé)."""
+    body = await read_json(request)
+    num = str(body.get("num") or "").strip()
+    entreprise = str(body.get("entreprise") or "").strip()
+    nom = str(body.get("nom") or "").strip()
+    if not num or not entreprise or not nom or not body.get("signature"):
         raise HTTPException(status_code=400, detail="Nom de l'exécutant et signature requis")
+    if len(nom) > 120:
+        raise HTTPException(status_code=400, detail="Nom trop long")
+    enforce_rate_limit(request, "public_sign", subject=num, subject_max=20)
+    signature = validate_signature(body.get("signature"))
 
     with db() as conn:
-        row = conn.execute("SELECT * FROM permits WHERE num = ?", (num,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Aucun permis trouvé avec ce numéro")
-        p = row_to_dict(row)
-        if p["entreprise"] is None or normalize_company_name(entreprise) != normalize_company_name(p["entreprise"]):
-            raise HTTPException(status_code=404, detail="Le nom d'entreprise ne correspond pas à ce permis")
+        row = _find_public_permit(conn, num, entreprise)
         p = auto_close_if_expired(conn, row)
         if p["statut"] == "Fermé":
             raise HTTPException(status_code=400, detail="Ce permis est fermé — signature impossible")
+        if p["statut"] != "Actif":
+            raise HTTPException(status_code=400, detail="Ce permis n'est pas encore actif — signature impossible")
+        if p.get("reception_nom"):
+            raise HTTPException(status_code=409, detail="Ce permis a déjà été signé à la réception")
 
         horodatage = datetime.utcnow().isoformat()
         conn.execute(
