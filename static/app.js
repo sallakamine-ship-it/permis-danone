@@ -128,6 +128,7 @@ async function tryLogin(){
 }
 
 async function logout(){
+  clearInterval(notifPollTimer);
   await api('/api/auth/logout', {method:'POST'}).catch(()=>{});
   currentUser = null;
   location.reload();
@@ -143,6 +144,9 @@ function afterLogin(){
   loadSectorsIntoSelects();
   resetForm();
   show('registre');
+  loadNotifications();
+  clearInterval(notifPollTimer);
+  notifPollTimer = setInterval(loadNotifications, 25000);
 }
 
 async function checkSession(){
@@ -848,6 +852,70 @@ async function submitPassword(){
     toast('✅ Mot de passe mis à jour');
   }catch(e){ toast('⚠️ ' + e.message, true); }
 }
+
+// ---------- Notifications (🔔 réceptions signées) ----------
+let notifPollTimer = null;
+let notifCache = [];
+
+function timeAgo(iso){
+  if(!iso) return '';
+  const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z');
+  const mins = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+  if(mins < 1) return "à l'instant";
+  if(mins < 60) return `il y a ${mins} min`;
+  const hrs = Math.round(mins / 60);
+  if(hrs < 24) return `il y a ${hrs} h`;
+  return d.toLocaleDateString('fr-CA') + ' ' + d.toLocaleTimeString('fr-CA', {hour:'2-digit', minute:'2-digit'});
+}
+
+async function loadNotifications(){
+  try{
+    const data = await api('/api/notifications');
+    notifCache = data.notifications || [];
+    const badge = document.getElementById('notifBadge');
+    if(data.unread_count > 0){
+      badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+      badge.classList.remove('hidden');
+    }else{
+      badge.classList.add('hidden');
+    }
+    renderNotifList();
+  }catch(e){ /* pas bloquant */ }
+}
+
+function renderNotifList(){
+  const list = document.getElementById('notifList');
+  if(!notifCache.length){
+    list.innerHTML = '<div class="empty">Aucune notification.</div>';
+    return;
+  }
+  list.innerHTML = notifCache.map(n => `
+    <div class="notif-item" onclick="openNotification(${n.permit_id})">
+      ${esc(n.message)}
+      <span class="notif-time">${timeAgo(n.created_at)}</span>
+    </div>`).join('');
+}
+
+function openNotification(permitId){
+  toggleNotifDropdown(false);
+  show('registre');
+  openDetail(permitId);
+}
+
+function toggleNotifDropdown(force){
+  const dd = document.getElementById('notifDropdown');
+  const show = force !== undefined ? force : dd.classList.contains('hidden');
+  dd.classList.toggle('hidden', !show);
+  if(show){
+    api('/api/notifications/seen', {method:'POST'}).catch(()=>{});
+    document.getElementById('notifBadge').classList.add('hidden');
+  }
+}
+
+document.addEventListener('click', e=>{
+  const wrap = document.querySelector('.notif-wrap');
+  if(wrap && !wrap.contains(e.target)) toggleNotifDropdown(false);
+});
 
 // ---------- Démarrage ----------
 document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });

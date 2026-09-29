@@ -1115,6 +1115,7 @@ async def public_sign(request: Request):
     num = str(body.get("num") or "").strip()
     entreprise = str(body.get("entreprise") or "").strip()
     nom = str(body.get("nom") or "").strip()
+    sector_slug = str(body.get("sector_slug") or "").strip()
     if not num or not entreprise or not nom or not body.get("signature"):
         raise HTTPException(status_code=400, detail="Nom de l'exécutant et signature requis")
     if len(nom) > 120:
@@ -1137,11 +1138,59 @@ async def public_sign(request: Request):
             "UPDATE permits SET signature_reception=?, reception_nom=?, reception_le=?, updated_at=datetime('now') WHERE id=?",
             (signature, nom, horodatage, p["id"]),
         )
+        # Le secteur physique où le permis a été consulté/signé (QR scanné sur
+        # place) attribue le permis à ce secteur dans le registre, s'il n'en
+        # avait pas déjà un — la recherche elle-même reste libre (voir
+        # /api/public/lookup) mais la signature, elle, ancre le permis.
+        if sector_slug and not p.get("sector_id"):
+            sector = conn.execute("SELECT id FROM sectors WHERE slug = ?", (sector_slug,)).fetchone()
+            if sector:
+                conn.execute("UPDATE permits SET sector_id=? WHERE id=? AND sector_id IS NULL", (sector["id"], p["id"]))
         add_status_history(
             conn, p["id"], p["statut"], nom,
             f"Permis consulté et signé sur place par {nom} ({entreprise})",
         )
+        # Notifie le donneur d'ordre (et le reste de l'équipe SST) : l'exécutant
+        # vient de consulter et signer le permis sur place, avant de commencer.
+        conn.execute(
+            "INSERT INTO notifications (permit_id, permit_num, message) VALUES (?,?,?)",
+            (
+                p["id"], p["num"],
+                f"✍️ {nom} ({entreprise}) a signé la réception du permis {p['num']} — "
+                f"donneur d'ordre : {p['donneur']}",
+            ),
+        )
     return {"ok": True, "reception_nom": nom, "reception_le": horodatage}
+
+
+# ===========================================================================
+# NOTIFICATIONS — signatures de réception, vues par l'équipe SST (admin +
+# donneurs d'ordre) au prochain login. Fil global (le donneur d'ordre du
+# permis est un champ texte libre, pas un compte utilisateur), lu jusqu'à
+# users.last_notif_seen_id pour calculer le compteur non-lu par utilisateur.
+# ===========================================================================
+@app.get("/api/notifications")
+async def list_notifications(session=Depends(require_session)):
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT id, permit_id, permit_num, message, created_at FROM notifications "
+            "ORDER BY id DESC LIMIT 30"
+        ).fetchall()
+        last_seen = conn.execute(
+            "SELECT last_notif_seen_id FROM users WHERE id = ?", (session["uid"],)
+        ).fetchone()["last_notif_seen_id"]
+    return {
+        "notifications": [dict(r) for r in rows],
+        "unread_count": sum(1 for r in rows if r["id"] > last_seen),
+    }
+
+
+@app.post("/api/notifications/seen")
+async def mark_notifications_seen(session=Depends(require_session)):
+    with db() as conn:
+        max_id = conn.execute("SELECT COALESCE(MAX(id), 0) AS m FROM notifications").fetchone()["m"]
+        conn.execute("UPDATE users SET last_notif_seen_id = ? WHERE id = ?", (max_id, session["uid"]))
+    return {"ok": True}
 
 
 @app.get("/api/public/sector/{slug}")

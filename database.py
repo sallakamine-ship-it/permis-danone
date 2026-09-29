@@ -136,10 +136,19 @@ def init_db():
                 uploaded_by TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                permit_id INTEGER NOT NULL REFERENCES permits(id) ON DELETE CASCADE,
+                permit_num TEXT NOT NULL,
+                message TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
             CREATE INDEX IF NOT EXISTS idx_permits_num ON permits(num);
             CREATE INDEX IF NOT EXISTS idx_permits_sector ON permits(sector_id);
             CREATE INDEX IF NOT EXISTS idx_permits_statut ON permits(statut);
             CREATE INDEX IF NOT EXISTS idx_audits_sector ON audits(sector_id);
+            CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
             """
         )
         # Migration : ajoute la colonne "zone" (secteur du site, liste déroulante)
@@ -168,6 +177,15 @@ def init_db():
         if "archive_par" not in existing_cols:
             conn.execute("ALTER TABLE permits ADD COLUMN archive_par TEXT")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_permits_archive ON permits(archive_le)")
+
+        # Migration : notifications — quand l'exécutant signe la réception sur
+        # place (voir signature_reception ci-dessus), une notification est
+        # créée pour que le donneur d'ordre (et le reste de l'équipe SST) la
+        # voie au prochain login. last_notif_seen_id suit, par utilisateur,
+        # jusqu'où il a déjà consulté le fil de notifications.
+        existing_user_cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+        if "last_notif_seen_id" not in existing_user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN last_notif_seen_id INTEGER NOT NULL DEFAULT 0")
 
 
 def row_to_dict(row):

@@ -45,6 +45,15 @@
       <button id="nav-users" class="nav-btn hidden" onclick="show('users')">👤 Utilisateurs</button>
     </nav>
     <div class="user-chip">
+      <div class="notif-wrap">
+        <button class="btn-outline-secondary" onclick="toggleNotifDropdown()" title="Notifications">
+          🔔<span id="notifBadge" class="notif-badge hidden">0</span>
+        </button>
+        <div id="notifDropdown" class="notif-dropdown hidden">
+          <div class="notif-dropdown-head">Réceptions signées</div>
+          <div id="notifList" class="notif-list"><div class="empty">Aucune notification.</div></div>
+        </div>
+      </div>
       <div class="avatar-wrap"><div class="avatar" id="userAvatar">?</div><span class="online-dot"></span></div>
       <div>
         <span id="userNameDisplay">—</span>

@@ -272,7 +272,7 @@ async function signPermit(){
     const res = await fetch('/api/public/sign', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ num: currentPermit.num, entreprise: currentPermit.entreprise, nom, signature })
+      body: JSON.stringify({ num: currentPermit.num, entreprise: currentPermit.entreprise, nom, signature, sector_slug: SECTOR_SLUG })
     });
     const data = await res.json().catch(()=>({}));
     if(!res.ok){
