@@ -1,5 +1,5 @@
 {# ===========================================================================
-   Éléments partagés par les pages Opsafe (accueil, formation, clients).
+   Éléments partagés par les pages SafeOp (accueil, formation, clients).
    Indépendant du branding Danone — voir static/opsafe.css.
    =========================================================================== #}
 
@@ -10,24 +10,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 {%- endmacro %}
 
-{# Anneau à arcs degradé — la marque Opsafe. Autoporteur en couleur : rendu
-   identique sur fond clair ou marine, pas de variante "light" nécessaire. #}
-{% macro os_ring(size=22) -%}
-<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 100 100" fill="none" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <path d="M88,50 A38 38 0 0 1 83.6,67.8" stroke="#4ade80" stroke-width="16"/>
-  <path d="M79.1,74.4 A38 38 0 0 1 56.6,87.4" stroke="#34c973" stroke-width="14"/>
-  <path d="M38.3,86.1 A38 38 0 0 1 14.3,63.0" stroke="#22b366" stroke-width="12"/>
-  <path d="M12.4,44.7 A38 38 0 0 1 31.0,17.1" stroke="#1b9857" stroke-width="10"/>
-  <path d="M48.7,12.0 A38 38 0 0 1 73.4,20.1" stroke="#0b4333" stroke-width="6"/>
-  <circle cx="84.2" cy="33.4" r="3.6" fill="#ffffff"/>
+{# Deux anneaux entrelacés — la marque SafeOp (gris "Safe" + vert "Op").
+   Autoporteur en couleur : rendu identique sur fond clair ou marine, pas de
+   variante "light" nécessaire. #}
+{% macro os_ring(width=64) -%}
+<svg width="{{ width }}" height="{{ (width*0.625)|round|int }}" viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <circle cx="58" cy="50" r="30" stroke="#64748b" stroke-width="14"/>
+  <circle cx="102" cy="50" r="30" stroke="#4ade80" stroke-width="14"/>
 </svg>
 {%- endmacro %}
 
-{# Lettrine intégrée : l'anneau tient lieu de "O" dans "Opsafe". #}
+{# Logo complet : icône (deux anneaux) + mot-symbole "SafeOp" côte à côte. #}
 {% macro os_logo(size=20, light=False) -%}
 <a href="/" class="os-logo">
-  <span class="os-logo-mark" style="width:{{ (size*1.05)|round|int }}px;height:{{ (size*1.05)|round|int }}px;">{{ os_ring((size*1.05)|round|int) }}</span>
-  <span class="os-logo-word{{ ' os-logo-word--light' if light else '' }}" style="font-size:{{ size }}px">psafe</span>
+  <span class="os-logo-mark">{{ os_ring((size*1.7)|round|int) }}</span>
+  <span class="os-logo-word{{ ' os-logo-word--light' if light else '' }}" style="font-size:{{ size }}px">SafeOp</span>
 </a>
 {%- endmacro %}
 
@@ -47,7 +44,7 @@
 <footer class="os-footer">
   <div class="os-footer-inner">
     {{ os_logo(24, light=True) }}
-    <p>© 2026 Opsafe &nbsp;·&nbsp; Plateforme de conformité SST pour entreprises &nbsp;·&nbsp; <a href="mailto:contact@opsafe.ca" class="os-footer-contact">contact@opsafe.ca</a></p>
+    <p>© 2026 SafeOp &nbsp;·&nbsp; Plateforme de conformité SST pour entreprises &nbsp;·&nbsp; <a href="mailto:contact@safeop.ca" class="os-footer-contact">contact@safeop.ca</a></p>
   </div>
 </footer>
 {%- endmacro %}

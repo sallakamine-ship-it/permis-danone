@@ -1158,9 +1158,9 @@ async def public_sector_info(slug: str):
 # PAGES HTML
 # ===========================================================================
 
-# Entreprises clientes actives sur Opsafe. Pour ajouter un client : une entrée
+# Entreprises clientes actives sur SafeOp. Pour ajouter un client : une entrée
 # ici, aucune page à refaire (clients.html boucle sur cette liste).
-OPSAFE_CLIENTS = [
+SAFEOP_CLIENTS = [
     {
         "name": "Danone",
         "logo": "/static/img/logo-danone-icon.png",
@@ -1195,7 +1195,7 @@ async def formation_page(request: Request):
 
 @app.get("/clients", response_class=HTMLResponse)
 async def clients_page(request: Request):
-    return templates.TemplateResponse(request, "clients.html", {"clients": OPSAFE_CLIENTS})
+    return templates.TemplateResponse(request, "clients.html", {"clients": SAFEOP_CLIENTS})
 
 
 if __name__ == "__main__":
