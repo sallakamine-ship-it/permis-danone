@@ -35,10 +35,10 @@ nav button:hover{background:#ddd}
 nav button.active{background:var(--bleu-danone-fonce);color:#fff}
 
 .card{background:#fff;border-radius:10px;padding:0;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.1);margin-bottom:14px}
-.permis-head{background:linear-gradient(135deg,var(--bleu-danone-fonce) 0%,#283780 100%);border-bottom:3px solid var(--bleu-danone-clair);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
-.permis-head h1{font-size:22px;letter-spacing:1px;color:#fff}
-.permis-head .ref{font-size:12px;color:rgba(255,255,255,.8)}
-.permis-head .num{background:#fff;border:2px solid var(--bleu-danone-fonce);color:var(--bleu-danone-fonce);border-radius:6px;padding:6px 14px;font-size:20px;font-weight:800;font-family:monospace}
+.permis-head{background:#fff;border-bottom:1px solid #eee;padding:18px 20px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px}
+.permis-head h1{font-size:22px;letter-spacing:.3px;color:var(--noir);font-weight:800}
+.permis-head .ref{font-size:12px;color:var(--gris)}
+.permis-head .num{background:var(--bleu-danone-fonce);border:none;color:#fff;border-radius:8px;padding:9px 18px;font-size:19px;font-weight:800;font-family:monospace}
 
 .section{padding:18px 18px;border-bottom:1px solid #eee}
 .section h2{font-size:14px;text-transform:uppercase;letter-spacing:.5px;background:var(--bleu-danone-fonce);color:#fff;padding:6px 12px;border-radius:5px;margin-bottom:14px;display:inline-flex;align-items:center;gap:9px}
@@ -174,10 +174,14 @@ tr:hover td{background:#fafafa}
 
 /* Impression officielle */
 @media print{
-  header.top,.actions,nav,.tools,.pagination,#nav-users,.btn{display:none !important}
+  header.top,.actions,nav,.tools,.pagination,#nav-users,.btn,.prefill-callout,.section-head-right{display:none !important}
   body{background:#fff}
   .card{box-shadow:none;border:1px solid #000}
   .permis-head{background:var(--bleu-danone-fonce) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .permis-head h1,.permis-head .ref,.site-line{color:#fff !important}
+  .permis-head .num{background:#fff !important;color:var(--bleu-danone-fonce) !important}
+  .permit-tag{background:rgba(255,255,255,.2) !important;color:#fff !important}
+  .section.is-collapsed .section-body{display:block !important}
   .sig-print-block{display:flex;gap:30px;margin-top:30px;page-break-inside:avoid}
   .sig-print-box{flex:1;border-top:1px solid #000;padding-top:6px;font-size:12px;text-align:center;min-height:70px}
 }
@@ -270,8 +274,8 @@ tr:hover td{background:#fafafa}
 .btn-outline-danger:hover{background:#fdecea}
 
 /* ---------- en-tête de permis : tag + ligne de site ---------- */
-.permit-tag{display:inline-block;background:rgba(255,255,255,.16);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:3px 10px;border-radius:5px;margin-bottom:8px}
-.site-line{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:4px}
+.permit-tag{display:inline-block;background:var(--bleu-danone-fonce);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:4px 11px;border-radius:6px;white-space:nowrap}
+.site-line{font-size:11.5px;color:var(--gris);margin-top:6px;text-align:right}
 
 /* ---------- bandeau "pré-rempli par Danone" ---------- */
 .prefill-callout{display:flex;gap:14px;background:#eef5fc;border:1px solid #cfe3f7;border-radius:10px;padding:16px 18px;margin:18px;align-items:flex-start}
@@ -296,6 +300,3 @@ tr:hover td{background:#fafafa}
 .section.is-collapsed .section-body{display:none}
 .section.is-collapsed .sec-chev{transform:rotate(-90deg)}
 
-@media print{
-  .prefill-callout,.section-head-right{display:none !important}
-}
