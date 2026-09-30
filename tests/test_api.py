@@ -1,4 +1,6 @@
-"""Tests de bout en bout de l'API (base SQLite temporaire, aucun état partagé)."""
+"""Tests de bout en bout de l'API (base Postgres de test dédiée, tables
+vidées avant chaque test — DATABASE_URL doit pointer vers une base Postgres
+réservée aux tests, jamais vers la base de production)."""
 import base64
 import importlib
 import os
@@ -17,18 +19,31 @@ SIG = "data:image/png;base64," + base64.b64encode(PNG_1PX).decode()
 ADMIN_PW = "motdepasse-admin-1"
 DONNEUR_PW = "motdepasse-donneur-1"
 
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql://permis_test:test@localhost:5432/permis_pytest"
+)
+
+_ALL_TABLES = (
+    "notifications", "audits", "photos", "status_history", "permits", "sectors", "users",
+)
+
 
 @pytest.fixture()
 def env(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
     monkeypatch.delenv("TRUSTED_PROXY_HOPS", raising=False)
     sys.path.insert(0, ROOT)
     for name in ("app", "database"):
         sys.modules.pop(name, None)
     app_module = importlib.import_module("app")
     db_module = importlib.import_module("database")
+    db_module.init_db()
     with db_module.db() as conn:
-        conn.execute("DELETE FROM users")
+        # Table dédiée aux tests, réutilisée d'un test à l'autre : on repart
+        # de zéro à chaque test plutôt que de compter sur un fichier neuf
+        # (comme le permettait l'ancienne base SQLite par tmp_path).
+        conn.execute(f"TRUNCATE {', '.join(_ALL_TABLES)} RESTART IDENTITY CASCADE")
         for username, pw, role in (("admin", ADMIN_PW, "admin"), ("coord", DONNEUR_PW, "donneur")):
             conn.execute(
                 "INSERT INTO users (username, password_hash, full_name, role) VALUES (?,?,?,?)",

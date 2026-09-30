@@ -5,3 +5,4 @@ itsdangerous
 python-multipart
 jinja2
 qrcode[pil]
+psycopg2-binary

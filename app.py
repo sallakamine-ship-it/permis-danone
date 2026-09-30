@@ -1,6 +1,6 @@
 """
 Permis de travail de chantier — Danone
-Backend FastAPI + SQLite.
+Backend FastAPI + PostgreSQL.
 
 Sécurité :
 - Mots de passe hachés avec bcrypt (jamais stockés ni transmis en clair après création).
@@ -17,7 +17,7 @@ import re
 import time
 import uuid
 import base64
-import sqlite3
+import psycopg2
 import asyncio
 import binascii
 import secrets
@@ -40,8 +40,11 @@ BASE_DIR = os.path.dirname(__file__)
 
 # DATA_DIR pointe vers le disque persistant Render (ex. /var/data) quand la
 # variable d'environnement est définie sur le service — sinon on reste sur le
-# dossier de l'app (comportement d'avant, disque éphémère). Voir le champ
-# database.py:DB_PATH pour la base de données, qui suit la même règle.
+# dossier de l'app (comportement d'avant, disque éphémère). Ne concerne plus
+# la base de données (voir database.py : DATABASE_URL, Postgres externe,
+# persistant indépendamment du disque de ce service) — seulement les photos/
+# rapports d'audit téléversés et la clé de signature des sessions ci-dessous,
+# qui restent sur ce disque éphémère pour l'instant.
 DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -492,7 +495,7 @@ async def create_user(request: Request, session=Depends(require_admin)):
                 "INSERT INTO users (username, password_hash, full_name, role) VALUES (?,?,?,?)",
                 (username, h, full_name, role),
             )
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
         raise HTTPException(status_code=409, detail="Ce nom d'utilisateur existe déjà")
     return {"ok": True}
 
@@ -556,7 +559,7 @@ async def create_sector(request: Request, session=Depends(require_session)):
     try:
         with db() as conn:
             conn.execute("INSERT INTO sectors (name, slug) VALUES (?,?)", (name, slug))
-    except sqlite3.IntegrityError:
+    except psycopg2.IntegrityError:
         raise HTTPException(status_code=409, detail="Ce secteur existe déjà")
     return {"ok": True, "slug": slug}
 
@@ -677,8 +680,10 @@ async def create_permit(request: Request, session=Depends(require_session)):
         )
     with db() as conn:
         # Verrou d'écriture avant de lire le dernier numéro : deux créations
-        # simultanées ne peuvent plus obtenir le même numéro.
-        conn.execute("BEGIN IMMEDIATE")
+        # simultanées ne peuvent plus obtenir le même numéro. (Postgres :
+        # verrou exclusif sur la table, bloque les autres écritures jusqu'au
+        # commit, mais n'empêche pas les lectures concurrentes.)
+        conn.execute("LOCK TABLE permits IN EXCLUSIVE MODE")
         num = next_permit_num(conn)
         values = {"num": num, "sector_id": _validate_sector(conn, body.get("sector_id"))}
         for f in TEXT_FIELDS:
@@ -736,7 +741,7 @@ async def list_permits(
         # est du texte libre sur le permis (pas de compte lié), donc on
         # rapproche sur le nom complet de la session, insensible à la casse
         # et aux espaces superflus.
-        where.append("TRIM(donneur) = TRIM(?) COLLATE NOCASE")
+        where.append("LOWER(TRIM(donneur)) = LOWER(TRIM(?))")
         params.append(session["full_name"])
     if period == "week":
         today = date.today()
@@ -746,7 +751,9 @@ async def list_permits(
         params.append(week_start.isoformat())
         params.append(week_end.isoformat())
     if search:
-        where.append("(num LIKE ? OR entreprise LIKE ? OR executant LIKE ? OR description LIKE ? OR lieux LIKE ? OR donneur LIKE ?)")
+        # ILIKE (Postgres) au lieu de LIKE : SQLite était insensible à la
+        # casse par défaut pour LIKE (texte ASCII), Postgres ne l'est pas.
+        where.append("(num ILIKE ? OR entreprise ILIKE ? OR executant ILIKE ? OR description ILIKE ? OR lieux ILIKE ? OR donneur ILIKE ?)")
         like = f"%{search}%"
         params += [like] * 6
     if statut:

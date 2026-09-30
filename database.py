@@ -1,26 +1,111 @@
 """
-Couche base de données — SQLite.
-Un seul fichier permis.db ; toutes les tables créées au démarrage si absentes.
+Couche base de données — PostgreSQL (migré depuis SQLite le 29 sept. 2026,
+pour ne plus perdre les données à chaque redémarrage/redéploiement du service
+gratuit Render, qui n'a pas de disque persistant).
+
+Connexion via la variable d'environnement DATABASE_URL (chaîne fournie par
+l'hébergeur Postgres, ex. Neon : postgresql://user:pass@host/db?sslmode=require).
+
+Pour éviter de réécrire les ~60 requêtes de app.py une par une, une petite
+couche de compatibilité (_ConnWrapper / _CursorWrapper ci-dessous) traduit à
+la volée le style SQLite utilisé dans tout le reste du code :
+  - placeholders "?"  -> "%s" (style psycopg2)
+  - datetime('now')   -> équivalent Postgres, MÊME format de sortie texte
+                          ("YYYY-MM-DD HH:MM:SS") pour ne rien changer côté
+                          app.js (parsing des dates) ou aux comparaisons de
+                          dates en texte (filtre "cette semaine")
+  - cur.lastrowid     -> ajoute "RETURNING id" aux INSERT et le récupère
+Les lignes vraiment spécifiques à Postgres (verrou explicite, requêtes de
+migration de colonnes) restent isolées dans app.py / init_db() ci-dessous,
+avec un commentaire, plutôt que cachées dans la couche de compatibilité.
 """
-import sqlite3
 import json
 import os
+import re
 from contextlib import contextmanager
 
-# DATA_DIR pointe vers le disque persistant Render (ex. /var/data) quand la
-# variable d'environnement est définie sur le service — sinon on reste sur le
-# dossier de l'app (disque éphémère, comportement d'avant). Voir app.py pour
-# uploads/ et .secret_key, qui suivent la même règle.
-DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
-os.makedirs(DATA_DIR, exist_ok=True)
-DB_PATH = os.path.join(DATA_DIR, "permis.db")
+import psycopg2
+import psycopg2.extras
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL n'est pas défini. Configurez la variable d'environnement "
+        "avec la chaîne de connexion Postgres (ex. celle fournie par Neon)."
+    )
+
+_QMARK_RE = re.compile(r"\?")
+# Reproduit exactement le format texte que produisait SQLite pour
+# datetime('now') : "2026-09-29 22:39:00" (espace, sans fuseau, sans
+# microsecondes) — les colonnes restent TEXT, aucun changement de format
+# ne doit se propager à app.js ni aux comparaisons de dates en texte.
+_NOW_SQL = "to_char(now() AT TIME ZONE 'utc', 'YYYY-MM-DD HH24:MI:SS')"
+
+
+def _translate(sql: str) -> str:
+    sql = sql.replace("datetime('now')", _NOW_SQL)
+    return _QMARK_RE.sub("%s", sql)
+
+
+class _CursorWrapper:
+    """Imite l'API d'un curseur sqlite3 (execute/fetchone/fetchall/lastrowid/
+    rowcount) au-dessus d'un vrai curseur psycopg2."""
+
+    def __init__(self, cursor):
+        self._cursor = cursor
+        self.lastrowid = None
+
+    def execute(self, sql, params=()):
+        pg_sql = _translate(sql)
+        if pg_sql.lstrip()[:6].upper() == "INSERT" and "RETURNING" not in pg_sql.upper():
+            pg_sql = pg_sql.rstrip().rstrip(";") + " RETURNING id"
+            self._cursor.execute(pg_sql, params)
+            row = self._cursor.fetchone()
+            self.lastrowid = row["id"] if row else None
+        else:
+            self._cursor.execute(pg_sql, params)
+        return self
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+
+class _ConnWrapper:
+    """Imite l'API d'une connexion sqlite3 : .execute() crée un curseur à la
+    volée (comme le fait la méthode de confort sqlite3.Connection.execute)."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=()):
+        cur = _CursorWrapper(self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor))
+        return cur.execute(sql, params)
+
+    def executescript(self, script):
+        # Uniquement du DDL (init_db, sans paramètres) : Postgres accepte
+        # plusieurs instructions séparées par ";" dans un seul execute().
+        self._conn.cursor().execute(_translate(script))
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    raw = psycopg2.connect(DATABASE_URL)
+    return _ConnWrapper(raw)
 
 
 @contextmanager
@@ -36,12 +121,20 @@ def db():
         conn.close()
 
 
+def _existing_columns(conn, table_name: str) -> set:
+    rows = conn.execute(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
+        (table_name,),
+    ).fetchall()
+    return {r["column_name"] for r in rows}
+
+
 def init_db():
     with db() as conn:
         conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 full_name TEXT NOT NULL,
@@ -50,14 +143,14 @@ def init_db():
             );
 
             CREATE TABLE IF NOT EXISTS sectors (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT UNIQUE NOT NULL,
                 slug TEXT UNIQUE NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
 
             CREATE TABLE IF NOT EXISTS permits (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 num TEXT UNIQUE NOT NULL,
                 sector_id INTEGER REFERENCES sectors(id),
                 donneur TEXT NOT NULL,
@@ -109,7 +202,7 @@ def init_db():
             );
 
             CREATE TABLE IF NOT EXISTS status_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 permit_id INTEGER NOT NULL REFERENCES permits(id) ON DELETE CASCADE,
                 statut TEXT NOT NULL,
                 par TEXT,
@@ -118,7 +211,7 @@ def init_db():
             );
 
             CREATE TABLE IF NOT EXISTS photos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 permit_id INTEGER NOT NULL REFERENCES permits(id) ON DELETE CASCADE,
                 filename TEXT NOT NULL,
                 uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -126,7 +219,7 @@ def init_db():
             );
 
             CREATE TABLE IF NOT EXISTS audits (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 sector_id INTEGER NOT NULL REFERENCES sectors(id) ON DELETE CASCADE,
                 filename TEXT NOT NULL,
                 original_name TEXT,
@@ -137,7 +230,7 @@ def init_db():
             );
 
             CREATE TABLE IF NOT EXISTS notifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 permit_id INTEGER NOT NULL REFERENCES permits(id) ON DELETE CASCADE,
                 permit_num TEXT NOT NULL,
                 message TEXT NOT NULL,
@@ -153,7 +246,7 @@ def init_db():
         )
         # Migration : ajoute la colonne "zone" (secteur du site, liste déroulante)
         # si elle n'existe pas déjà sur une base créée avant son introduction.
-        existing_cols = {row["name"] for row in conn.execute("PRAGMA table_info(permits)")}
+        existing_cols = _existing_columns(conn, "permits")
         if "zone" not in existing_cols:
             conn.execute("ALTER TABLE permits ADD COLUMN zone TEXT")
 
@@ -183,7 +276,7 @@ def init_db():
         # créée pour que le donneur d'ordre (et le reste de l'équipe SST) la
         # voie au prochain login. last_notif_seen_id suit, par utilisateur,
         # jusqu'où il a déjà consulté le fil de notifications.
-        existing_user_cols = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+        existing_user_cols = _existing_columns(conn, "users")
         if "last_notif_seen_id" not in existing_user_cols:
             conn.execute("ALTER TABLE users ADD COLUMN last_notif_seen_id INTEGER NOT NULL DEFAULT 0")
 
