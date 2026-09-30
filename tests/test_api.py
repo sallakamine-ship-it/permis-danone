@@ -293,15 +293,47 @@ def test_public_lookup_generic_errors_and_content(env, donneur):
     assert wrong_company.json()["detail"] == wrong_num.json()["detail"]  # n'indique pas si le numéro existe
 
 
-def test_public_lookup_rate_limited_per_permit_number_despite_spoofed_ip(env, donneur):
+def test_public_lookup_never_rate_limited_unlimited_retries(env, donneur):
+    """Le sous-traitant sur le terrain doit pouvoir se tromper de nom
+    d'entreprise autant de fois que nécessaire sans jamais être bloqué —
+    contrairement à la connexion admin/donneur, qui reste limitée."""
     p = donneur.post("/api/permits", json=permit_body()).json()
     pub = TestClient(env[0].app)
     codes = [
-        pub.get("/api/public/lookup", params={"num": p["num"], "entreprise": f"Essai {i}"},
-                headers={"X-Forwarded-For": f"172.16.0.{i}"}).status_code
+        pub.get("/api/public/lookup", params={"num": p["num"], "entreprise": f"Essai {i}"}).status_code
         for i in range(30)
     ]
-    assert 429 in codes
+    assert 429 not in codes
+    assert all(c == 404 for c in codes)
+
+
+def test_public_lookup_by_number_only(env, donneur):
+    p = donneur.post("/api/permits", json=permit_body()).json()
+    pub = TestClient(env[0].app)
+    r = pub.get("/api/public/lookup", params={"num": p["num"]})
+    assert r.status_code == 200, r.text
+    assert r.json()["entreprise"] == "Soudure Pro Inc."
+
+
+def test_public_lookup_by_company_only_unique_match(env, donneur):
+    p = donneur.post("/api/permits", json=permit_body(entreprise="Compagnie Unique Inc.")).json()
+    pub = TestClient(env[0].app)
+    r = pub.get("/api/public/lookup", params={"entreprise": "Compagnie Unique Inc."})
+    assert r.status_code == 200, r.text
+    assert r.json()["num"] == p["num"]
+
+
+def test_public_lookup_by_company_only_ambiguous(env, donneur):
+    donneur.post("/api/permits", json=permit_body(entreprise="Doublon Inc.", description="Premier"))
+    donneur.post("/api/permits", json=permit_body(entreprise="Doublon Inc.", description="Second"))
+    pub = TestClient(env[0].app)
+    r = pub.get("/api/public/lookup", params={"entreprise": "Doublon Inc."})
+    assert r.status_code == 409, r.text
+
+
+def test_public_lookup_requires_at_least_one_field(env):
+    pub = TestClient(env[0].app)
+    assert pub.get("/api/public/lookup").status_code == 400
 
 
 def test_public_sign_once_only_and_validated(env, donneur):

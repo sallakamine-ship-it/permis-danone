@@ -24,12 +24,13 @@
     <div id="searchView" class="section">
       <p class="note" style="margin-bottom:16px">
         Entrez le numéro de permis qui vous a été communiqué par le donneur d'ordre Danone,
-        ainsi que le nom de votre entreprise, pour consulter les conditions de votre permis de travail.
+        ou le nom de votre entreprise (au moins un des deux), pour consulter les conditions
+        de votre permis de travail.
       </p>
-      <label>Numéro de permis <span class="req">*</span></label>
+      <label>Numéro de permis</label>
       <input type="text" id="lookupNum" placeholder="ex. 00525" autocomplete="off">
       <div style="height:10px"></div>
-      <label>Nom de votre entreprise <span class="req">*</span></label>
+      <label>Nom de votre entreprise</label>
       <input type="text" id="lookupEntreprise" placeholder="ex. Toitures ABC inc." autocomplete="off">
       <div id="lookupError" class="login-error"></div>
       <button class="btn btn-primary login-btn" onclick="lookupPermit()">🔍 Consulter mon permis</button>
@@ -60,8 +61,8 @@ async function lookupPermit(){
   const entreprise = document.getElementById('lookupEntreprise').value.trim();
   const err = document.getElementById('lookupError');
   err.classList.remove('show');
-  if(!num || !entreprise){
-    err.textContent = 'Le numéro de permis et le nom de l\'entreprise sont requis.';
+  if(!num && !entreprise){
+    err.textContent = 'Entrez le numéro de permis ou le nom de l\'entreprise.';
     err.classList.add('show');
     return;
   }

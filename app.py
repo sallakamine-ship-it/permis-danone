@@ -201,10 +201,9 @@ def normalize_company_name(s: Optional[str]) -> str:
 
 # ---------------------------------------------------------------------------
 # Limitation du taux de requêtes (anti-bruteforce) — compteur en mémoire par
-# IP et par point d'accès. Suffisant pour un déploiement mono-processus
-# (l'app utilise SQLite, donc un seul worker de toute façon) ; à remplacer
-# par un stockage partagé (Redis, etc.) si l'app est un jour répartie sur
-# plusieurs instances.
+# IP et par point d'accès. Suffisant pour un déploiement mono-processus ;
+# à remplacer par un stockage partagé (Redis, etc.) si l'app est un jour
+# répartie sur plusieurs instances.
 # ---------------------------------------------------------------------------
 RATE_LIMIT_WINDOW_SECONDS = 15 * 60  # 15 minutes
 RATE_LIMIT_MAX_ATTEMPTS = 5
@@ -1088,35 +1087,63 @@ async def delete_audit(audit_id: int, session=Depends(require_session)):
 # ===========================================================================
 # ACCÈS SOUS-TRAITANT — PUBLIC, SANS COMPTE (exigence #3)
 # ===========================================================================
-NOT_FOUND_PUBLIC = "Aucun permis ne correspond à ce numéro et à cette entreprise"
+NOT_FOUND_PUBLIC = "Aucun permis ne correspond à ces informations"
+AMBIGUOUS_PUBLIC = (
+    "Plusieurs permis actifs correspondent à cette entreprise — "
+    "précisez aussi le numéro de permis pour continuer"
+)
 
 
 def _find_public_permit(conn, num: str, entreprise: str):
-    """Trouve le permis pour un sous-traitant. Même message d'erreur que le
-    numéro n'existe pas ou que l'entreprise ne corresponde pas : on ne
-    confirme jamais l'existence d'un numéro de permis à un inconnu."""
-    row = conn.execute("SELECT * FROM permits WHERE num = ? AND archive_le IS NULL", (num,)).fetchone()
-    if (
-        not row
-        or row["entreprise"] is None
-        or normalize_company_name(entreprise) != normalize_company_name(row["entreprise"])
-    ):
+    """Trouve le permis pour un sous-traitant, à partir du numéro, du nom
+    d'entreprise, ou des deux (au moins un des deux est requis — voir
+    public_lookup/public_sign). Même message d'erreur générique dans tous
+    les cas d'échec : on ne confirme jamais qu'un numéro existe à un inconnu
+    qui n'aurait pas la bonne entreprise, et inversement."""
+    num = (num or "").strip()
+    entreprise_norm = normalize_company_name(entreprise)
+
+    if num:
+        row = conn.execute("SELECT * FROM permits WHERE num = ? AND archive_le IS NULL", (num,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail=NOT_FOUND_PUBLIC)
+        if entreprise_norm:
+            # Les deux sont fournis : les deux doivent correspondre (comme avant).
+            if row["entreprise"] is None or entreprise_norm != normalize_company_name(row["entreprise"]):
+                raise HTTPException(status_code=404, detail=NOT_FOUND_PUBLIC)
+        return row
+
+    # Pas de numéro : recherche par entreprise seule. Peut être ambigu si
+    # l'entreprise a plusieurs permis actifs — on demande alors le numéro
+    # plutôt que de deviner lequel. Pré-filtre large en SQL (insensible à la
+    # casse), confirmation exacte en Python avec normalize_company_name
+    # (espaces multiples compris) pour rester cohérent avec le cas num+entreprise.
+    candidates = conn.execute(
+        "SELECT * FROM permits WHERE archive_le IS NULL AND entreprise ILIKE ? ORDER BY id DESC",
+        (f"%{entreprise.strip()}%",),
+    ).fetchall()
+    rows = [r for r in candidates if normalize_company_name(r["entreprise"]) == entreprise_norm]
+    if not rows:
         raise HTTPException(status_code=404, detail=NOT_FOUND_PUBLIC)
-    return row
+    if len(rows) > 1:
+        raise HTTPException(status_code=409, detail=AMBIGUOUS_PUBLIC)
+    return rows[0]
 
 
 @app.get("/api/public/lookup")
-async def public_lookup(request: Request, num: str, entreprise: str, sector_slug: Optional[str] = None):
-    """Recherche publique par numéro de permis + nom d'entreprise (confirmation).
-    Aucune authentification. Le secteur n'est plus utilisé pour restreindre la
-    recherche (aucun secteur n'est assigné à la création) : num + entreprise
-    suffisent, quel que soit le QR scanné. sector_slug est accepté pour
-    compatibilité mais n'est plus vérifié."""
+async def public_lookup(request: Request, num: str = "", entreprise: str = "", sector_slug: Optional[str] = None):
+    """Recherche publique par numéro de permis et/ou nom d'entreprise (au
+    moins un des deux). Aucune authentification. Le secteur n'est plus
+    utilisé pour restreindre la recherche (aucun secteur n'est assigné à la
+    création) : sector_slug est accepté pour compatibilité mais n'est plus
+    vérifié. Pas de limite de tentatives ici — un sous-traitant sur le
+    terrain doit pouvoir réessayer autant de fois que nécessaire pour
+    retrouver son permis (une limite reste en place à la signature, qui est
+    l'action qui compte réellement)."""
     num = (num or "").strip()
     entreprise = (entreprise or "").strip()
-    if not num or not entreprise:
-        raise HTTPException(status_code=400, detail="Numéro de permis et nom d'entreprise requis")
-    enforce_rate_limit(request, "public_lookup", subject=num, subject_max=20)
+    if not num and not entreprise:
+        raise HTTPException(status_code=400, detail="Numéro de permis ou nom d'entreprise requis")
 
     with db() as conn:
         row = _find_public_permit(conn, num, entreprise)
