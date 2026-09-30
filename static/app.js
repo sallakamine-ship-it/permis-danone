@@ -265,6 +265,7 @@ function resetForm(){
   ['height','bonbonne','roof','hot'].forEach(syncToggleState);
   refreshRiskCounts();
   updateSectionStatuses();
+  document.getElementById('receptionSignatureBlock').style.display = 'none';
 }
 
 async function loadNextPermitNum(){
@@ -393,6 +394,16 @@ function populateFormFromPermit(p){
   document.getElementById('f_statut').value = p.statut || 'Actif';
   refreshRiskCounts();
   updateSectionStatuses();
+
+  const receptionBlock = document.getElementById('receptionSignatureBlock');
+  if(p.reception_nom){
+    document.getElementById('receptionSignatureInfo').textContent =
+      `${p.reception_nom} — ${(p.reception_le||'').replace('T',' ').slice(0,16)}`;
+    document.getElementById('receptionSignatureImg').src = safeSig(p.signature_reception);
+    receptionBlock.style.display = 'block';
+  } else {
+    receptionBlock.style.display = 'none';
+  }
 }
 
 // ---------- Registre ----------
