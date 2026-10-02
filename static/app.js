@@ -266,12 +266,6 @@ function resetForm(){
   refreshRiskCounts();
   updateSectionStatuses();
   document.getElementById('receptionSignatureBlock').style.display = 'none';
-  // Un compte donneur d'ordre crée toujours des permis en son propre nom —
-  // on le prérempli pour lui éviter de le retaper à chaque permis. Un admin
-  // crée souvent pour quelqu'un d'autre : on laisse le champ vide pour lui.
-  if(currentUser && currentUser.role === 'donneur'){
-    document.getElementById('f_donneur').value = currentUser.full_name;
-  }
 }
 
 function newPermit(){
