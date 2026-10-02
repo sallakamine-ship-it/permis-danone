@@ -920,26 +920,6 @@ async def close_permit(permit_id: int, request: Request, session=Depends(require
     return row_to_dict(row)
 
 
-@app.post("/api/admin/_debug_backdate")
-async def _debug_backdate_permit(request: Request, session=Depends(require_admin)):
-    """TEMPORAIRE — utilitaire admin pour antidater un permis de démonstration
-    (created_at/updated_at/ferme_le), afin de simuler des données de semaines
-    passées. N'affecte jamais le contenu du permis ni ses signatures. À
-    retirer après usage : ne sert qu'à peupler des données de démo."""
-    body = await read_json(request)
-    permit_id = body.get("permit_id")
-    if not permit_id:
-        raise HTTPException(status_code=400, detail="permit_id requis")
-    created_at = body.get("created_at")
-    ferme_le = body.get("ferme_le")
-    with db() as conn:
-        if created_at:
-            conn.execute("UPDATE permits SET created_at=?, updated_at=? WHERE id=?", (created_at, created_at, permit_id))
-        if ferme_le:
-            conn.execute("UPDATE permits SET ferme_le=? WHERE id=?", (ferme_le, permit_id))
-    return {"ok": True}
-
-
 MAX_PHOTO_BYTES = 15 * 1024 * 1024
 
 
