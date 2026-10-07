@@ -250,6 +250,13 @@ def init_db():
         if "zone" not in existing_cols:
             conn.execute("ALTER TABLE permits ADD COLUMN zone TEXT")
 
+        # Migration : inspections quotidiennes (12.02) et signatures PTA /
+        # approbation (12.01), stockées en JSON dans le permis.
+        if "inspections" not in existing_cols:
+            conn.execute("ALTER TABLE permits ADD COLUMN inspections TEXT")
+        if "pta_sign" not in existing_cols:
+            conn.execute("ALTER TABLE permits ADD COLUMN pta_sign TEXT")
+
         # Migration : contenu du Permis mondial Danone (PTA), stocké en JSON.
         if "pta" not in existing_cols:
             conn.execute("ALTER TABLE permits ADD COLUMN pta TEXT")
@@ -295,9 +302,10 @@ def row_to_dict(row):
                 d[k] = json.loads(d[k]) if d[k] else []
             except (TypeError, json.JSONDecodeError):
                 d[k] = []
-    if "pta" in d:
-        try:
-            d["pta"] = json.loads(d["pta"]) if d["pta"] else {}
-        except (TypeError, json.JSONDecodeError):
-            d["pta"] = {}
+    for k, default in (("pta", {}), ("pta_sign", {}), ("inspections", [])):
+        if k in d:
+            try:
+                d[k] = json.loads(d[k]) if d[k] else default
+            except (TypeError, json.JSONDecodeError):
+                d[k] = default
     return d

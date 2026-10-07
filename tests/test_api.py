@@ -431,3 +431,61 @@ def test_pta_roundtrip_and_sanitizing(env, donneur):
     r = donneur.put(f"/api/permits/{p['id']}", json=permit_body(pta={"loto": "Non"}))
     assert r.status_code == 200 and r.json()["pta"] == {"loto": "Non"}
     assert donneur.post("/api/permits", json=permit_body()).json()["pta"] == {}
+
+
+PNG_SIG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+
+
+def test_validity_max_one_year(env, donneur):
+    r = donneur.post("/api/permits", json=permit_body(date_debut="2099-01-01", date_fin="2100-06-01"))
+    assert r.status_code == 400 and "1 an" in r.json()["detail"]
+    assert donneur.post("/api/permits", json=permit_body(date_debut="2099-01-01", date_fin="2099-12-31")).status_code == 200
+
+
+def test_inspection_daily_and_compliance(env, donneur, admin):
+    from datetime import date, timedelta
+    today = date.today()
+    debut = (today - timedelta(days=3)).isoformat()
+    p = donneur.post("/api/permits", json=permit_body(date_debut=debut, date_fin=(today + timedelta(days=10)).isoformat())).json()
+    pid = p["id"]
+    c = donneur.get(f"/api/permits/{pid}").json()["compliance"]
+    assert not c["c1202"]["ok"] and c["c1202"]["missing_count"] >= 3
+    # inspection vide refusée, future refusée, hors période refusée
+    assert donneur.post(f"/api/permits/{pid}/inspection", json={}).status_code == 400
+    assert donneur.post(f"/api/permits/{pid}/inspection", json={"date": (today + timedelta(days=1)).isoformat(), "dangers": "x"}).status_code == 400
+    assert donneur.post(f"/api/permits/{pid}/inspection", json={"date": "2000-01-01", "dangers": "x"}).status_code == 400
+    for i in range(1, 4):
+        d = (today - timedelta(days=i)).isoformat()
+        r = donneur.post(f"/api/permits/{pid}/inspection", json={"date": d, "dangers": "Obstruction", "mitigation": "Dégagé"} if i != 2 else {"date": d, "aucun_travail": True})
+        assert r.status_code == 200
+    got = donneur.get(f"/api/permits/{pid}").json()
+    assert got["compliance"]["c1202"]["ok"] and len(got["inspections"]) == 3
+    # même jour = remplacement, pas doublon
+    donneur.post(f"/api/permits/{pid}/inspection", json={"dangers": "A", "mitigation": "B"})
+    assert len(donneur.get(f"/api/permits/{pid}").json()["inspections"]) == 4
+    donneur.post(f"/api/permits/{pid}/inspection", json={"dangers": "A2", "mitigation": "B2"})
+    assert len(donneur.get(f"/api/permits/{pid}").json()["inspections"]) == 4
+
+
+def test_pta_sign_and_1201(env, donneur, admin):
+    p = donneur.post("/api/permits", json=permit_body(
+        date_debut="2099-01-01", date_fin="2099-06-01", risques_a=["x"],
+        pta={"loto": "Oui", "ctl_1": "ok"})).json()
+    pid = p["id"]
+    issues = donneur.get(f"/api/permits/{pid}").json()["compliance"]["c1201"]["issues"]
+    assert any("Approbation" in i for i in issues) and any("Cadenassage" in i for i in issues)
+    # un donneur ne peut pas approuver ; l'admin oui
+    assert donneur.post(f"/api/permits/{pid}/pta-sign", json={"role": "approbation", "nom": "N", "signature": PNG_SIG}).status_code == 403
+    assert donneur.post(f"/api/permits/{pid}/pta-sign", json={"role": "hote", "nom": "", "signature": PNG_SIG}).status_code == 400
+    assert donneur.post(f"/api/permits/{pid}/pta-sign", json={"role": "hote", "nom": "H", "signature": "javascript:x"}).status_code == 400
+    assert donneur.post(f"/api/permits/{pid}/pta-sign", json={"role": "bidon", "nom": "H", "signature": PNG_SIG}).status_code == 400
+    assert donneur.post(f"/api/permits/{pid}/pta-sign", json={"role": "hote", "nom": "H", "signature": PNG_SIG}).status_code == 200
+    assert admin.post(f"/api/permits/{pid}/pta-sign", json={"role": "approbation", "nom": "Admin", "signature": PNG_SIG}).status_code == 200
+    donneur.put(f"/api/permits/{pid}", json=permit_body(date_debut="2099-01-01", date_fin="2099-06-01", risques_a=["x"],
+                pta={"loto": "Oui", "loto_permis": "00530", "ctl_1": "ok"}))
+    c = donneur.get(f"/api/permits/{pid}").json()["compliance"]["c1201"]
+    assert c["ok"], c
+    lst = donneur.get("/api/permits").json()["permits"][0]
+    assert "pta_sign" not in lst and "compliance" in lst
+    rep = admin.get("/api/compliance").json()
+    assert rep["global"]["total"] >= 1 and "zones" in rep

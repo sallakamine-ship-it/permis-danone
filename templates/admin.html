@@ -377,6 +377,11 @@
   <!-- ============ AUDIT ============ -->
   <div id="view-audit" class="view">
     <div class="card">
+      <div class="permis-head"><h1 style="font-size:18px">CONFORMITÉ DANONE — 12.01 / 12.02</h1></div>
+      <div class="section" id="complianceReport"><p class="note">Chargement…</p></div>
+    </div>
+
+    <div class="card">
       <div class="permis-head"><h1 style="font-size:18px">IMPORTER UN RAPPORT D'AUDIT</h1></div>
       <div class="section">
         <div class="grid2">
@@ -479,6 +484,22 @@
 
 </div>
 
+<!-- ============ MODALE SIGNATURE PTA ============ -->
+<div id="ptaSignModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;display:flex;align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:520px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="permis-head"><h1 style="font-size:16px" id="ptaSignTitle">Signature</h1></div>
+    <div class="section">
+      <label>Nom du signataire</label><input type="text" id="ptaSignNom">
+      <div class="sig-block"><canvas class="sig-pad" id="sigPta"></canvas>
+        <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="clearSig('sigPta')">Effacer</button></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="confirmPtaSign()">✅ Signer</button>
+      <button class="btn btn-secondary" onclick="closePtaSign()">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MODALE FERMETURE (signatures) ============ -->
 <div id="closeModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;display:flex;align-items:center;justify-content:center;padding:16px">
   <div class="card" style="max-width:520px;width:100%;max-height:90vh;overflow-y:auto">
@@ -523,6 +544,7 @@
 
 <div class="toast" id="toast"></div>
 <script src="/static/pta.js"></script>
+<script src="/static/conformite.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

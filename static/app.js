@@ -170,7 +170,7 @@ function show(v){
   if(v==='registre' || v==='mesPermis') lastListView = v;
   if(v==='registre'){ loadRegistre(1); }
   if(v==='mesPermis'){ loadMesPermis(1); }
-  if(v==='audit'){ loadAuditSectorSelects(); loadAudits(); }
+  if(v==='audit'){ loadAuditSectorSelects(); loadAudits(); loadComplianceReport(); }
   if(v==='secteurs'){ loadSecteurs(); }
   if(v==='users'){ loadUsers(); }
 }
@@ -473,7 +473,7 @@ function renderRegistreTable(permits){
       <td>${p.height_work?'<span class="badge b-hauteur">🏗️ Oui</span>':'—'}</td>
       <td>${p.roof_work?'<span class="badge b-toit">🏠 Oui</span>':'—'}</td>
       <td>${p.hot_work?'<span class="badge b-hot">🔥 Oui</span>':'—'}</td>
-      <td><span class="badge ${sb}">${esc(p.statut)}</span></td>
+      <td><span class="badge ${sb}">${esc(p.statut)}</span>${complianceBadges(p)}</td>
       <td><button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openDetail(${p.id})">👁️</button></td>
     </tr>`;
   }).join('');
@@ -598,6 +598,7 @@ function renderDetail(p){
   }
 
   html += ptaDetailHtml(p.pta);
+  html += conformiteDetailHtml(p);
 
   if(p.statut === 'Fermé'){
     html += `<div style="margin-top:14px;padding:12px;background:#f5f5f5;border-radius:8px">

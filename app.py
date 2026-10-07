@@ -589,6 +589,7 @@ async def sector_qrcode(slug: str, request: Request):
 # ===========================================================================
 # PERMIS — création / liste / détail / modification (admin, donneur)
 # ===========================================================================
+MAX_VALIDITY_DAYS = 366
 REQUIRED_BASE = ["donneur", "executant", "description", "lieux"]
 
 TEXT_FIELDS = [
@@ -654,6 +655,8 @@ def validate_permit_payload(body: dict):
     fin = _parse_iso_date(str(body.get("date_fin") or "").strip() or None, "la date de fin")
     if debut and fin and fin < debut:
         raise HTTPException(status_code=400, detail="La date de fin est antérieure à la date de début")
+    if debut and fin and (fin - debut).days > MAX_VALIDITY_DAYS:
+        raise HTTPException(status_code=400, detail="Un permis global est valide 1 an maximum (norme Danone 12.01)")
 
 
 def _validate_sector(conn, sector_id):
@@ -787,6 +790,9 @@ async def list_permits(
         permits = [auto_close_if_expired(conn, r) for r in rows]
         # Les images de signature (lourdes) ne servent qu'au détail d'un permis.
         for permit in permits:
+            permit["compliance"] = compute_compliance(permit)
+            permit.pop("pta_sign", None)
+            permit.pop("inspections", None)
             for key in ("signature_donneur", "signature_executant", "signature_reception"):
                 permit[key] = bool(permit.get(key))
 
@@ -826,6 +832,7 @@ async def get_permit(permit_id: int, session=Depends(require_session)):
         ).fetchall()
     p["history"] = [dict(h) for h in history]
     p["photos"] = [dict(ph) for ph in photos]
+    p["compliance"] = compute_compliance(p)
     return p
 
 
@@ -938,6 +945,206 @@ async def close_permit(permit_id: int, request: Request, session=Depends(require
         add_status_history(conn, permit_id, "Fermé", session["full_name"], "Fermeture officielle avec signatures")
         row = conn.execute("SELECT * FROM permits WHERE id = ?", (permit_id,)).fetchone()
     return row_to_dict(row)
+
+
+
+# ===========================================================================
+# CONFORMITÉ Danone 12 Basics — 12.01 (permis global) et 12.02 (inspection quotidienne)
+# ===========================================================================
+from zoneinfo import ZoneInfo
+
+PTA_SIGN_ROLES = {
+    "approbation": "Approbation (personne compétente désignée)",
+    "entrepreneur": "Représentant de l'entrepreneur",
+    "hote": "Hôte / contact Danone",
+    "sst": "Représentant SST (ou délégué)",
+    "qualite": "Représentant Qualité (ou délégué)",
+}
+# Procédures du PTA qui exigent un permis distinct : « Oui » => numéro à référencer.
+PTA_SPECIFIC_PERMITS = {
+    "loto": "Cadenassage", "shunt": "Shuntage", "cse": "Espace clos", "elec": "Électrique sous tension",
+    "chaud": "Travaux à chaud", "hauteur": "Travail en hauteur", "echafaud": "Échafaudage",
+    "levage": "Levage / PIV", "fouille": "Excavation", "ligne": "Rupture de ligne", "toit": "Accès au toit",
+}
+RENEWAL_WARN_DAYS = 30
+
+
+def _today() -> date:
+    return datetime.now(ZoneInfo("America/Toronto")).date()
+
+
+def _d(value):
+    try:
+        return datetime.strptime(str(value)[:10], "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
+
+
+def compute_compliance(p: dict, today: Optional[date] = None) -> dict:
+    today = today or _today()
+    pta = p.get("pta") or {}
+    sign = p.get("pta_sign") or {}
+    debut, fin = _d(p.get("date_debut")), _d(p.get("date_fin"))
+
+    # --- 12.01 : permis global ---
+    issues = []
+    if not debut or not fin:
+        issues.append("Dates d'émission / de fin manquantes")
+    elif (fin - debut).days > MAX_VALIDITY_DAYS:
+        issues.append("Validité supérieure à 1 an")
+    if not (p.get("risques_a") or p.get("risques_b") or p.get("risques_c") or pta.get("haz_1")):
+        issues.append("Risques non identifiés")
+    if not any(pta.get(f"ctl_{i}") for i in range(1, 6)) and not (p.get("risques_a") or p.get("risques_b")):
+        issues.append("Mesures de contrôle incomplètes")
+    if not any(pta.get(k) in ("Oui", "Non") for k in PTA_SPECIFIC_PERMITS):
+        issues.append("Permis spécifiques (dangereux) non évalués")
+    for k, label in PTA_SPECIFIC_PERMITS.items():
+        if pta.get(k) == "Oui" and not str(pta.get(f"{k}_permis") or "").strip():
+            issues.append(f"Permis spécifique non référencé : {label}")
+    ap = sign.get("approbation") or {}
+    if not ap.get("signature"):
+        issues.append("Approbation par une personne compétente manquante")
+    elif not ap.get("le"):
+        issues.append("Date d'approbation manquante")
+    expires_in = (fin - today).days if fin else None
+    renewal_due = bool(p.get("statut") == "Actif" and expires_in is not None and 0 <= expires_in <= RENEWAL_WARN_DAYS)
+    c1201 = {"ok": not issues, "issues": issues}
+
+    # --- 12.02 : inspection quotidienne consignée dans le permis ---
+    done = {i.get("date") for i in (p.get("inspections") or [])}
+    missing = []
+    i2 = []
+    if not debut:
+        i2.append("Date de début manquante — inspections non vérifiables")
+    elif p.get("statut") != "Brouillon":
+        cands = [today - timedelta(days=1)]
+        if fin:
+            cands.append(fin)
+        if p.get("statut") == "Fermé" and _d(p.get("ferme_le")):
+            cands.append(_d(p.get("ferme_le")))
+        last = min(cands)
+        day = debut
+        n = 0
+        while day <= last and n < 400:
+            if day.isoformat() not in done:
+                missing.append(day.isoformat())
+            day += timedelta(days=1)
+            n += 1
+        if missing:
+            i2.append(f"{len(missing)} jour(s) sans inspection consignée")
+    c1202 = {"ok": not i2, "issues": i2, "missing_days": missing[-31:], "missing_count": len(missing)}
+    return {"c1201": c1201, "c1202": c1202, "expires_in_days": expires_in, "renewal_due": renewal_due}
+
+
+def _level_from_pct(pct: float) -> str:
+    if pct >= 100:
+        return "Compliant"
+    if pct >= 90:
+        return "Significant"
+    if pct >= 50:
+        return "Partial"
+    return "Basic"
+
+
+@app.get("/api/compliance")
+async def compliance_report(session=Depends(require_session)):
+    """Indicateur de conformité 12.01 / 12.02 par secteur (zone du site).
+    Niveau indicatif selon le % de permis conformes ; l'auditeur Danone reste juge."""
+    with db() as conn:
+        rows = conn.execute("SELECT * FROM permits WHERE archive_le IS NULL AND statut != 'Brouillon' ORDER BY id").fetchall()
+    zones, bad = {}, []
+    for r in rows:
+        p = row_to_dict(r)
+        c = compute_compliance(p)
+        z = p.get("zone") or "Non précisé"
+        e = zones.setdefault(z, {"zone": z, "total": 0, "ok1201": 0, "ok1202": 0})
+        e["total"] += 1
+        e["ok1201"] += c["c1201"]["ok"]
+        e["ok1202"] += c["c1202"]["ok"]
+        if not (c["c1201"]["ok"] and c["c1202"]["ok"]):
+            bad.append({"id": p["id"], "num": p["num"], "entreprise": p.get("entreprise"), "zone": z,
+                        "statut": p["statut"], "issues": c["c1201"]["issues"] + c["c1202"]["issues"]})
+    out = []
+    for e in sorted(zones.values(), key=lambda x: x["zone"]):
+        p1, p2 = e["ok1201"] * 100 / e["total"], e["ok1202"] * 100 / e["total"]
+        out.append({**e, "pct1201": round(p1), "pct1202": round(p2),
+                    "level1201": _level_from_pct(p1), "level1202": _level_from_pct(p2)})
+    tot = sum(e["total"] for e in out) or 0
+    g1 = round(sum(e["ok1201"] for e in out) * 100 / tot) if tot else None
+    g2 = round(sum(e["ok1202"] for e in out) * 100 / tot) if tot else None
+    return {"zones": out, "global": {"total": tot, "pct1201": g1, "pct1202": g2,
+            "level1201": _level_from_pct(g1) if tot else "N/A", "level1202": _level_from_pct(g2) if tot else "N/A"},
+            "non_conformes": bad[:200]}
+
+
+def _clean_inspection_text(v, n=1000):
+    return str(v or "").strip()[:n]
+
+
+@app.post("/api/permits/{permit_id}/inspection")
+async def add_inspection(permit_id: int, request: Request, session=Depends(require_session)):
+    """Consigne l'inspection quotidienne du chantier dans le permis (12.02).
+    Une seule entrée par date : une nouvelle saisie le même jour la remplace."""
+    body = await read_json(request)
+    day = _d(body.get("date")) or _today()
+    if day > _today():
+        raise HTTPException(status_code=400, detail="Impossible de consigner une inspection dans le futur")
+    aucun = bool(body.get("aucun_travail"))
+    dangers = _clean_inspection_text(body.get("dangers"))
+    mitigation = _clean_inspection_text(body.get("mitigation"))
+    if not aucun and not (dangers or mitigation):
+        raise HTTPException(status_code=400, detail="Indiquez les dangers présents et le plan de mitigation (ou « aucun travail ce jour »)")
+    with db() as conn:
+        row = _get_visible_permit(conn, permit_id, session)
+        p = auto_close_if_expired(conn, row)
+        if row["archive_le"]:
+            raise HTTPException(status_code=409, detail="Ce permis est archivé")
+        if p["statut"] == "Brouillon":
+            raise HTTPException(status_code=409, detail="Activez le permis avant de consigner des inspections")
+        debut, fin = _d(p.get("date_debut")), _d(p.get("date_fin"))
+        if (debut and day < debut) or (fin and day > fin):
+            raise HTTPException(status_code=400, detail="La date est hors de la période de validité du permis")
+        entry = {
+            "date": day.isoformat(), "aucun_travail": aucun, "dangers": dangers, "mitigation": mitigation,
+            "danone_verify": bool(body.get("danone_verify")), "par": session["full_name"],
+            "at": datetime.utcnow().isoformat(timespec="seconds"),
+        }
+        inspections = [i for i in (p.get("inspections") or []) if i.get("date") != entry["date"]] + [entry]
+        inspections.sort(key=lambda i: i["date"])
+        conn.execute("UPDATE permits SET inspections=?, updated_at=datetime('now') WHERE id=?",
+                     (json.dumps(inspections), permit_id))
+        add_status_history(conn, permit_id, p["statut"], session["full_name"], f"Inspection quotidienne consignée ({entry['date']})")
+        p["inspections"] = inspections
+    return {"inspections": inspections, "compliance": compute_compliance(p)}
+
+
+@app.post("/api/permits/{permit_id}/pta-sign")
+async def pta_sign(permit_id: int, request: Request, session=Depends(require_session)):
+    """Signature électronique d'un rôle du PTA (approbation, entrepreneur, hôte, SST, Qualité)."""
+    body = await read_json(request)
+    role = body.get("role")
+    if role not in PTA_SIGN_ROLES:
+        raise HTTPException(status_code=400, detail="Rôle de signature invalide")
+    if role == "approbation" and session["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Seule une personne compétente désignée (administrateur) peut approuver le permis")
+    signature = validate_signature(body.get("signature"))
+    nom = _clean_inspection_text(body.get("nom"), 120)
+    if not nom:
+        raise HTTPException(status_code=400, detail="Le nom du signataire est requis")
+    with db() as conn:
+        row = _get_visible_permit(conn, permit_id, session)
+        p = auto_close_if_expired(conn, row)
+        if row["archive_le"]:
+            raise HTTPException(status_code=409, detail="Ce permis est archivé")
+        if p["statut"] == "Fermé":
+            raise HTTPException(status_code=409, detail="Ce permis est fermé")
+        sign = dict(p.get("pta_sign") or {})
+        sign[role] = {"nom": nom, "signature": signature, "le": datetime.utcnow().isoformat(timespec="seconds"),
+                      "par": session["full_name"]}
+        conn.execute("UPDATE permits SET pta_sign=?, updated_at=datetime('now') WHERE id=?", (json.dumps(sign), permit_id))
+        add_status_history(conn, permit_id, p["statut"], session["full_name"], f"Signature PTA : {PTA_SIGN_ROLES[role]} ({nom})")
+        p["pta_sign"] = sign
+    return {"pta_sign": sign, "compliance": compute_compliance(p)}
 
 
 MAX_PHOTO_BYTES = 15 * 1024 * 1024

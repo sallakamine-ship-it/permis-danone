@@ -46,6 +46,11 @@ const PTA_PROGRAM = [
   ['prog_meteo','Les conditions météo ont-elles été considérées ?'],
 ];
 const PTA_HAZ_ROWS = 5;
+// Chaque procédure qui exige un permis distinct : numéro du permis spécifique à référencer (norme 12.01).
+['loto','shunt','cse','elec','chaud','hauteur','echafaud','levage','fouille','ligne','toit'].forEach(k=>{
+  const proc = PTA_PROCS.find(p=>p[0]===k);
+  proc[2].push([k+'_permis','N° du permis spécifique (ex. 00530)','text']);
+});
 
 function ptaSelect(key, opts){
   return `<select id="pta_${key}"><option value="">—</option>${opts.map(o=>`<option>${o}</option>`).join('')}</select>`;
