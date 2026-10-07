@@ -609,6 +609,20 @@ def _clean_list(value) -> list:
     return [str(v)[:300] for v in value[:100] if isinstance(v, (str, int, float))]
 
 
+def _clean_pta(value) -> dict:
+    """Contenu du PTA Danone : dict clé -> texte ou liste de textes (borné)."""
+    if not isinstance(value, dict):
+        return {}
+    out = {}
+    for k, v in list(value.items())[:200]:
+        key = str(k)[:60]
+        if isinstance(v, list):
+            out[key] = _clean_list(v)
+        elif isinstance(v, (str, int, float)) and not isinstance(v, bool):
+            out[key] = str(v).strip()[:1000]
+    return out
+
+
 def _clean_text(value):
     if value is None:
         return None
@@ -691,6 +705,7 @@ async def create_permit(request: Request, session=Depends(require_session)):
             values[f] = json.dumps(_clean_list(body.get(f, [])))
         for f in BOOL_FIELDS:
             values[f] = int(bool(body.get(f)))
+        values["pta"] = json.dumps(_clean_pta(body.get("pta")))
         values["statut"] = statut
         values["cree_par"] = session["full_name"]
         columns = ", ".join(values)
@@ -853,6 +868,11 @@ async def update_permit(permit_id: int, request: Request, session=Depends(requir
                 updates[f] = int(bool(body[f]))
                 if updates[f] != int(bool(existing[f])):
                     changed.append(f)
+        if "pta" in body:
+            new_pta = _clean_pta(body["pta"])
+            updates["pta"] = json.dumps(new_pta)
+            if new_pta != (existing.get("pta") or {}):
+                changed.append("pta")
         new_statut = body.get("statut", existing["statut"])
         status_changed = new_statut != existing["statut"]
         if status_changed:

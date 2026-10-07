@@ -420,3 +420,14 @@ def test_sectors_and_qr(env, donneur, admin):
     sector_id = donneur.get("/api/sectors").json()[0]["id"]
     assert donneur.delete(f"/api/sectors/{sector_id}").status_code == 403
     assert admin.delete(f"/api/sectors/{sector_id}").status_code == 200
+
+
+def test_pta_roundtrip_and_sanitizing(env, donneur):
+    pta = {"ppe": ["Casque de sécurité"], "loto": "Oui", "loto_panneau": "P-12", "bad": {"x": 1}, "flag": True}
+    p = donneur.post("/api/permits", json=permit_body(pta=pta)).json()
+    assert p["pta"] == {"ppe": ["Casque de sécurité"], "loto": "Oui", "loto_panneau": "P-12"}
+    got = donneur.get(f"/api/permits/{p['id']}").json()
+    assert got["pta"]["loto"] == "Oui"
+    r = donneur.put(f"/api/permits/{p['id']}", json=permit_body(pta={"loto": "Non"}))
+    assert r.status_code == 200 and r.json()["pta"] == {"loto": "Non"}
+    assert donneur.post("/api/permits", json=permit_body()).json()["pta"] == {}

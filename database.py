@@ -250,6 +250,10 @@ def init_db():
         if "zone" not in existing_cols:
             conn.execute("ALTER TABLE permits ADD COLUMN zone TEXT")
 
+        # Migration : contenu du Permis mondial Danone (PTA), stocké en JSON.
+        if "pta" not in existing_cols:
+            conn.execute("ALTER TABLE permits ADD COLUMN pta TEXT")
+
         # Migration : signature de réception — le sous-traitant consulte son
         # permis (recherche publique par numéro + entreprise) puis le signe
         # électroniquement sur place, avant de commencer le travail. Distinct
@@ -291,4 +295,9 @@ def row_to_dict(row):
                 d[k] = json.loads(d[k]) if d[k] else []
             except (TypeError, json.JSONDecodeError):
                 d[k] = []
+    if "pta" in d:
+        try:
+            d["pta"] = json.loads(d["pta"]) if d["pta"] else {}
+        except (TypeError, json.JSONDecodeError):
+            d["pta"] = {}
     return d

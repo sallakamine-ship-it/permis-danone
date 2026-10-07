@@ -315,3 +315,9 @@ tr:hover td{background:#fafafa}
 .section.is-collapsed .section-body{display:none}
 .section.is-collapsed .sec-chev{transform:rotate(-90deg)}
 
+
+.pta-h{margin:18px 0 6px;font-size:14px;color:var(--bleu,#0a4a8f)}
+.pta-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:4px 0;border-bottom:1px solid #eee}
+.pta-row select{max-width:110px}
+.pta-proc{margin-bottom:4px}
+.pta-subs{padding:6px 0 6px 14px;border-left:3px solid #cfe0f3;margin:4px 0}

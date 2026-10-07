@@ -262,6 +262,7 @@ function resetForm(){
     if(e.type==='checkbox') e.checked=false; else e.value='';
   });
   document.getElementById('f_statut').value = 'Actif';
+  populatePta({});
   ['height','bonbonne','roof','hot'].forEach(syncToggleState);
   refreshRiskCounts();
   updateSectionStatuses();
@@ -304,6 +305,7 @@ function collectFormData(){
     hot_debut: val('f_hot_debut'), hot_fin: val('f_hot_fin'),
     hot_surv: val('f_hot_surv'), hot_ext: val('f_hot_ext'),
     statut: val('f_statut'),
+    pta: collectPta(),
   };
 }
 
@@ -395,6 +397,7 @@ function populateFormFromPermit(p){
   document.getElementById('f_hot_surv').value = p.hot_surv || '';
   document.getElementById('f_hot_ext').value = p.hot_ext || '';
   syncToggleState('hot');
+  populatePta(p.pta);
 
   document.getElementById('f_statut').value = p.statut || 'Actif';
   refreshRiskCounts();
@@ -593,6 +596,8 @@ function renderDetail(p){
       <b>🔥 Travail à chaud</b> — Nature : ${esc(p.hot_nature)||'—'}, Surveillance : ${esc(p.hot_surv)||'—'}, Extincteur # : ${esc(p.hot_ext)||'—'}
       ${riskListHtml('Précautions', p.risques_hot)}</div>`;
   }
+
+  html += ptaDetailHtml(p.pta);
 
   if(p.statut === 'Fermé'){
     html += `<div style="margin-top:14px;padding:12px;background:#f5f5f5;border-radius:8px">
