@@ -70,6 +70,7 @@ buildChecks('risquesHauteur', LISTE_HAUTEUR, 'HAUTEUR');
 buildChecks('risquesBonbonne', LISTE_BONBONNE, 'BONBONNE');
 buildChecks('risquesToit', LISTE_TOIT, 'TOIT');
 buildChecks('risquesHot', LISTE_HOT, 'HOT');
+renderPtaForm();
 
 function getChecks(grp){ return [...document.querySelectorAll(`input[data-grp="${grp}"]:checked`)].map(c=>c.value); }
 function setChecks(grp, values){
