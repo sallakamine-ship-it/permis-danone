@@ -970,7 +970,10 @@ RENEWAL_WARN_DAYS = 30
 
 
 def _today() -> date:
-    return datetime.now(ZoneInfo("America/Toronto")).date()
+    try:
+        return datetime.now(ZoneInfo("America/Toronto")).date()
+    except Exception:  # base tzdata absente sur certains hébergeurs
+        return (datetime.utcnow() - timedelta(hours=5)).date()
 
 
 def _d(value):
