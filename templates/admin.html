@@ -208,30 +208,7 @@
           </div>
         </div>
         <div style="margin-top:12px"><label>Surveillant / vigie désigné <span class="req">*</span></label><input type="text" id="f_height_vigie"></div>
-
-        <div class="hot-toggle hot-toggle--bonbonne" style="margin-top:14px">
-          <label class="switch"><input type="checkbox" id="f_bonbonne_work" onchange="toggleSection('bonbonne')"><span class="slider"></span></label>
-          <div><strong>Bonbonne(s) de gaz transportée(s) en hauteur ?</strong><br><span style="font-size:13px;color:#666">Oxygène, acétylène, propane</span></div>
-          <span class="state">Non requis</span>
-        </div>
-        <div id="bonbonneSection" class="hidden">
-          <div class="risques" style="margin-top:12px;background:#fff8ea;border-color:var(--orange)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <b style="font-size:12px;text-transform:uppercase;color:var(--gris)">Vérifications</b>
-              <span class="count-badge" id="countBonbonne" style="background:#fff;color:#c77700">0</span>
-            </div>
-            <div class="risques-grid" id="risquesBonbonne"></div>
-          </div>
-          <div class="grid3" style="margin-top:12px">
-            <div><label>Type de gaz</label>
-              <select id="f_bonbonne_type"><option value="">—</option><option>Oxygène</option><option>Acétylène</option><option>Propane</option><option>Oxygène + Acétylène</option><option>Autre</option></select>
-            </div>
-            <div><label>Nombre de bonbonnes</label><input type="number" id="f_bonbonne_nombre" min="0" step="1"></div>
-            <div><label>Système de levage</label>
-              <select id="f_bonbonne_levage"><option value="">—</option><option>Chariot/support dédié</option><option>Panier de levage certifié</option><option>Treuil avec élingue certifiée</option><option>Autre</option></select>
-            </div>
-          </div>
-        </div>
+        <div id="ptaHazHauteur"></div>
       </div>
       </div>
     </div>
@@ -244,7 +221,7 @@
       <div class="section-body">
       <div class="hot-toggle hot-toggle--toit">
         <label class="switch"><input type="checkbox" id="f_roof_work" onchange="toggleSection('roof')"><span class="slider"></span></label>
-        <div><strong>Travail au toit requis ?</strong><br><span style="font-size:13px;color:#666">Ouvertures/lucarnes, rives, résistance du toit…</span></div>
+        <div><strong>Travail au toit requis ?</strong></div>
         <span class="state">Non requis</span>
       </div>
       <div id="roofSection" class="hidden">
@@ -267,6 +244,7 @@
           </div>
         </div>
         <div style="margin-top:12px"><label>Surveillant / vigie désigné (toit) <span class="req">*</span></label><input type="text" id="f_roof_vigie"></div>
+        <div id="ptaHazToit"></div>
       </div>
       </div>
     </div>
@@ -279,7 +257,7 @@
       <div class="section-body">
       <div class="hot-toggle hot-toggle--chaud">
         <label class="switch"><input type="checkbox" id="f_hot_work" onchange="toggleSection('hot')"><span class="slider"></span></label>
-        <div><strong>Travail à chaud requis ?</strong><br><span style="font-size:13px;color:#666">Brasage, découpage, meulage, soudage, perçage…</span></div>
+        <div><strong>Travail à chaud requis ?</strong></div>
         <span class="state">Non requis</span>
       </div>
       <div id="hotSection" class="hidden">
@@ -301,6 +279,7 @@
           </div>
           <div><label>Extincteur #</label><input type="text" id="f_hot_ext"></div>
         </div>
+        <div id="ptaHazChaud"></div>
       </div>
       </div>
     </div>
@@ -543,8 +522,8 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<script src="/static/pta.js?v=536"></script>
-<script src="/static/conformite.js?v=536"></script>
-<script src="/static/app.js?v=536"></script>
+<script src="/static/pta.js?v=537"></script>
+<script src="/static/conformite.js?v=537"></script>
+<script src="/static/app.js?v=537"></script>
 </body>
 </html>

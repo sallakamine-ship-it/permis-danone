@@ -46,6 +46,13 @@ const PTA_PROGRAM = [
   ['prog_meteo','Les conditions météo ont-elles été considérées ?'],
 ];
 const PTA_HAZ_ROWS = 5;
+// Dangers / mesures propres aux permis hauteur (h), toit (t) et travaux à chaud (c).
+const PTA_HAZ_GROUPS = [['h','ptaHazHauteur','Travail en hauteur'],['t','ptaHazToit','Travail au toit'],['c','ptaHazChaud','Travaux à chaud']];
+function ptaHazRows(g){
+  let h = `<h3 class="pta-h">Dangers liés à la tâche et mesures pour les ÉLIMINER / CONTRÔLER</h3>`;
+  for(let i=1;i<=PTA_HAZ_ROWS;i++) h += `<div class="grid2"><div><input type="text" id="pta_haz_${g}_${i}" placeholder="Danger ${i}"></div><div><input type="text" id="pta_ctl_${g}_${i}" placeholder="Mesure pour éliminer / contrôler ${i}"></div></div>`;
+  return h;
+}
 // Chaque procédure qui exige un permis distinct : numéro du permis spécifique à référencer (norme 12.01).
 ['loto','shunt','cse','elec','chaud','hauteur','echafaud','levage','fouille','toit'].forEach(k=>{
   const proc = PTA_PROCS.find(p=>p[0]===k);
@@ -89,6 +96,7 @@ function renderPtaForm(){
   h += `<h3 class="pta-h">Dangers liés à la tâche et mesures pour les ÉLIMINER / CONTRÔLER</h3>`;
   for(let i=1;i<=PTA_HAZ_ROWS;i++) h += `<div class="grid2"><div><input type="text" id="pta_haz_${i}" placeholder="Danger ${i}"></div><div><input type="text" id="pta_ctl_${i}" placeholder="Mesure de contrôle ${i}"></div></div>`;
   host.innerHTML = h;
+  PTA_HAZ_GROUPS.forEach(([g,id])=>{ const el=document.getElementById(id); if(el) el.innerHTML = ptaHazRows(g); });
   for(const [k,,subs] of PTA_PROCS){
     if(subs.length) document.getElementById('pta_'+k).addEventListener('change', ptaSyncSubs);
   }
@@ -106,7 +114,7 @@ function ptaScalarKeys(){
   PTA_QUESTIONS.forEach(q=>keys.push(q[0]));
   PTA_PROCS.forEach(p=>{ keys.push(p[0]); p[2].forEach(s=>keys.push(s[0])); });
   PTA_PROGRAM.forEach(q=>keys.push(q[0]));
-  for(let i=1;i<=PTA_HAZ_ROWS;i++){ keys.push('haz_'+i,'ctl_'+i); }
+  for(let i=1;i<=PTA_HAZ_ROWS;i++){ keys.push('haz_'+i,'ctl_'+i); PTA_HAZ_GROUPS.forEach(([g])=>keys.push(`haz_${g}_${i}`,`ctl_${g}_${i}`)); }
   return keys;
 }
 function ptaListKeys(){ return [...Object.keys(PTA_PPE), 'cert_types']; }
@@ -152,5 +160,10 @@ function ptaDetailHtml(pta){
   const hz = [];
   for(let i=1;i<=PTA_HAZ_ROWS;i++) if(pta['haz_'+i]||pta['ctl_'+i]) hz.push(`<li>${e(pta['haz_'+i]||'—')} → ${e(pta['ctl_'+i]||'—')}</li>`);
   if(hz.length) h += `<p><b>Dangers → mesures de contrôle</b></p><ul>${hz.join('')}</ul>`;
+  PTA_HAZ_GROUPS.forEach(([g,,label])=>{
+    const rows = [];
+    for(let i=1;i<=PTA_HAZ_ROWS;i++) if(pta[`haz_${g}_${i}`]||pta[`ctl_${g}_${i}`]) rows.push(`<li>${e(pta[`haz_${g}_${i}`]||'—')} → ${e(pta[`ctl_${g}_${i}`]||'—')}</li>`);
+    if(rows.length) h += `<p><b>${label} — dangers → mesures</b></p><ul>${rows.join('')}</ul>`;
+  });
   return h + '</div>';
 }

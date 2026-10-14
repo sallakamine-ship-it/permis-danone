@@ -67,7 +67,6 @@ buildChecks('risquesA', LISTE_A, 'A');
 buildChecks('risquesB', LISTE_B, 'B');
 buildChecks('risquesC', LISTE_C, 'C');
 buildChecks('risquesHauteur', LISTE_HAUTEUR, 'HAUTEUR');
-buildChecks('risquesBonbonne', LISTE_BONBONNE, 'BONBONNE');
 buildChecks('risquesToit', LISTE_TOIT, 'TOIT');
 buildChecks('risquesHot', LISTE_HOT, 'HOT');
 renderPtaForm();
@@ -222,7 +221,7 @@ function updateSectionStatuses(){
 // ---------- Compteurs de sélection sur les listes de vérification ----------
 const RISK_COUNT_GROUPS = [
   ['risquesA','countA'], ['risquesB','countB'], ['risquesC','countC'],
-  ['risquesHauteur','countHauteur'], ['risquesBonbonne','countBonbonne'],
+  ['risquesHauteur','countHauteur'],
   ['risquesToit','countToit'], ['risquesHot','countHot'],
 ];
 function refreshRiskCounts(){
@@ -264,7 +263,7 @@ function resetForm(){
   });
   document.getElementById('f_statut').value = 'Actif';
   populatePta({});
-  ['height','bonbonne','roof','hot'].forEach(syncToggleState);
+  ['height','roof','hot'].forEach(syncToggleState);
   refreshRiskCounts();
   updateSectionStatuses();
   document.getElementById('receptionSignatureBlock').style.display = 'none';
@@ -295,9 +294,6 @@ function collectFormData(){
     height_work: document.getElementById('f_height_work').checked,
     risques_hauteur: getChecks('HAUTEUR'), height_acces: val('f_height_acces'),
     height_m: val('f_height_m'), height_sauvetage: val('f_height_sauvetage'), height_vigie: val('f_height_vigie'),
-    bonbonne_work: document.getElementById('f_bonbonne_work').checked,
-    risques_bonbonne: getChecks('BONBONNE'), bonbonne_type: val('f_bonbonne_type'),
-    bonbonne_nombre: val('f_bonbonne_nombre'), bonbonne_levage: val('f_bonbonne_levage'),
     roof_work: document.getElementById('f_roof_work').checked,
     risques_toit: getChecks('TOIT'), roof_type: val('f_roof_type'),
     roof_resistance: val('f_roof_resistance'), roof_perimetre: val('f_roof_perimetre'), roof_vigie: val('f_roof_vigie'),
@@ -375,12 +371,6 @@ function populateFormFromPermit(p){
   document.getElementById('f_height_vigie').value = p.height_vigie || '';
   syncToggleState('height');
 
-  document.getElementById('f_bonbonne_work').checked = !!p.bonbonne_work;
-  setChecks('BONBONNE', p.risques_bonbonne);
-  document.getElementById('f_bonbonne_type').value = p.bonbonne_type || '';
-  document.getElementById('f_bonbonne_nombre').value = p.bonbonne_nombre || '';
-  document.getElementById('f_bonbonne_levage').value = p.bonbonne_levage || '';
-  syncToggleState('bonbonne');
 
   document.getElementById('f_roof_work').checked = !!p.roof_work;
   setChecks('TOIT', p.risques_toit);
