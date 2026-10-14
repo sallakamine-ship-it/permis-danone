@@ -63,7 +63,7 @@ function conformiteDetailHtml(p){
       <div class="grid2"><div><label>Date</label><input type="date" id="insDate" value="${new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)}"></div>
       <div style="display:flex;align-items:flex-end;gap:14px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="insAucun" onchange="document.getElementById('insFields').classList.toggle('hidden',this.checked)"> Aucun travail ce jour</label>
       <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="insVerify"> Vérifié par Danone</label></div></div>
-      <div id="insFields" style="margin-top:8px"><label>Dangers présents (BPF/GMP, ÉPI, obstructions, sortie d'urgence, déchets, permis en place)</label><textarea id="insDangers"></textarea>
+      <div id="insFields" style="margin-top:8px"><label>Dangers présents (BPM, ÉPI, obstructions, sortie d'urgence, déchets, permis en place)</label><textarea id="insDangers"></textarea>
       <label style="margin-top:8px;display:block">Plan de mitigation</label><textarea id="insMitigation"></textarea></div>
       <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveInspection()">💾 Consigner l'inspection</button></div>`;
   }

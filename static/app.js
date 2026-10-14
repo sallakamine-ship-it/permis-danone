@@ -21,7 +21,7 @@ const LISTE_C = [
  "Ventilation adéquate","Aucune pesée/incorporation de poudre pendant travaux",
  "Inspection visuelle après travaux en zone doseuse","Rinçage tuyauterie après coupure réseau"];
 const LISTE_HAUTEUR = [
- "Analyse de risque de la tâche en hauteur complétée","Hauteur de travail > 3 m (chute)",
+ "Analyse de risque de la tâche en hauteur complétée","Hauteur de travail > 2 m (chute)",
  "Garde-corps conformes en place","Plan de sauvetage en hauteur établi",
  "Harnais antichute inspecté et porté","Cordon/absorbeur d'énergie conforme",
  "Points d'ancrage certifiés (>22 kN)","Ligne de vie installée et vérifiée",

@@ -964,7 +964,7 @@ PTA_SIGN_ROLES = {
 PTA_SPECIFIC_PERMITS = {
     "loto": "Cadenassage", "shunt": "Shuntage", "cse": "Espace clos", "elec": "Électrique sous tension",
     "chaud": "Travaux à chaud", "hauteur": "Travail en hauteur", "echafaud": "Échafaudage",
-    "levage": "Levage / PIV", "fouille": "Excavation", "ligne": "Rupture de ligne", "toit": "Accès au toit",
+    "levage": "Levage / PIV", "fouille": "Excavation", "toit": "Accès au toit",
 }
 RENEWAL_WARN_DAYS = 30
 

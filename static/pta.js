@@ -9,24 +9,24 @@ const PTA_PPE = {
 const PTA_PPE_TITLES = { ppe:'ÉPI requis', ppe_chute:'Protection contre les chutes', ppe_resp:'Protection respiratoire' };
 const PTA_QUESTIONS = [
   ['sds','Fiches de données de sécurité (FDS) des produits chimiques fournies à Danone'],
-  ['gmp_equip','De l\'équipement sera-t-il apporté en zone BPF/GMP ? (si OUI : revue Qualité requise)'],
+  ['gmp_equip','De l\'équipement sera-t-il apporté en zone BPM ? (si OUI : revue Qualité requise)'],
   ['inflammables','Matières inflammables/combustibles entreposées, séparées, inspectées et sécurisées selon la procédure ?'],
   ['douche','Douche de sécurité et lave-yeux identifiés et opérationnels (signaler tout équipement non fonctionnel)'],
   ['zone_balisee','Zone de travail identifiée par ruban de signalisation, cônes, barricades, etc.'],
 ];
 // [clé, libellé, [sous-champs [clé, libellé, type('yn'|'text')]]]
 const PTA_PROCS = [
-  ['loto','Cadenassage (LOTO) — permis requis',[['loto_sources','Sources isolées','text'],['loto_panneau','Emplacement du panneau','text']]],
-  ['shunt','Shuntage — permis de shuntage requis',[['shunt_risque','Si aucune procédure : analyse de risques ?','yn']]],
-  ['cse','Espace clos — permis requis',[['cse_lieu','Emplacement','text'],['cse_sources','Emplacement des sources associées','text']]],
-  ['elec','Travaux électriques sous tension — permis requis',[['elec_panneau','Emplacement du panneau associé','text']]],
-  ['chaud','Travaux à chaud — permis requis',[['chaud_gmp','En zone BPF/GMP ? (revue Qualité requise)','yn'],['chaud_brosses','Brosses métalliques en bon état ?','yn'],['chaud_couverture','Couverture/écran de soudage en place ?','yn'],['chaud_alim','Zone de procédé alimentaire couverte ?','yn'],['chaud_nettoyage','Ustensiles appropriés pour le nettoyage ?','yn'],['chaud_guet','Guet(s) de feu en place ?','yn'],['chaud_guet_nb','Nombre de guets dans la zone','text']]],
+  ['loto','Cadenassage (LOTO) — permis requis',[['loto_sources','Équipements','text'],['loto_panneau','Emplacement des boîtes de cadenassage','text']]],
+  ['shunt','Shuntage — permis de shuntage requis',[]],
+  ['cse','Espace clos — permis requis',[['cse_lieu','Emplacement','text'],['cse_sources','Équipement','text']]],
+  ['elec','Travaux électriques',[['elec_cadenassage','Cadenassage requis ?','yn']]],
+  ['chaud','Travaux à chaud — permis requis',[['chaud_gmp','En zone BPM ? (revue Qualité requise)','yn'],['chaud_brosses','Brosses métalliques en bon état ?','yn'],['chaud_couverture','Couverture/écran de soudage en place ?','yn'],['chaud_alim','Zone de procédé alimentaire couverte ?','yn'],['chaud_nettoyage','Ustensiles appropriés pour le nettoyage ?','yn'],['chaud_guet','Guet(s) de feu en place ?','yn'],['chaud_guet_nb','Nombre de guets dans la zone','text']]],
   ['incendie','Mise hors service d\'un système incendie',[['incendie_tag','Numéro d\'étiquette RSVP','text']]],
   ['hauteur','Travail en hauteur (harnais) — permis requis',[]],
-  ['echafaud','Échafaudages utilisés — permis requis',[['echafaud_ehs','Approuvé par EHS ?','yn'],['echafaud_gmp','En zone GMP ? (revue Qualité requise)','yn'],['echafaud_insp','Inspectés et étiquetés ?','yn']]],
-  ['levage','Grues, levages critiques, nacelles, autres PIV — permis requis',[['levage_gmp','En zone GMP ? (revue Qualité requise)','yn'],['levage_plan','Plan de levage documenté ?','yn'],['levage_garde','Zone de travail protégée ?','yn'],['levage_chute','Systèmes antichute installés ?','yn'],['levage_propane','Équipement propane/diesel ?','yn'],['levage_insp','Inspections et formations récentes disponibles ?','yn']]],
+  ['echafaud','Échafaudages utilisés — permis requis',[['echafaud_ehs','Approuvé par EHS ?','yn'],['echafaud_gmp','En zone BPM ? (revue Qualité requise)','yn'],['echafaud_insp','Inspectés et étiquetés ?','yn']]],
+  ['levage','Grues, levages critiques, nacelles, autres PIV',[['levage_gmp','En zone BPM ? (revue Qualité requise)','yn'],['levage_plan','Plan de levage documenté ?','yn'],['levage_garde','Zone de travail protégée ?','yn'],['levage_chute','Systèmes antichute installés ?','yn'],['levage_propane','Équipement propane/diesel ?','yn'],['levage_insp','Inspections et formations récentes disponibles ?','yn']]],
   ['fouille','Creusage / tranchée / excavation (> 3 po) — permis requis',[['fouille_plans','Plans vérifiés pour les services publics ?','yn'],['fouille_energie','Énergie coupée dans la zone de travail ?','yn'],['fouille_barriere','Barrière de sécurité autour de la zone (DÉFENSE D\'ENTRER) ?','yn'],['fouille_cachees','Intérieur : conduits et tuyaux cachés repérés/marqués ?','yn'],['fouille_loc','Extérieur : service de localisation identifié/marqué ?','yn'],['fouille_scie','Sciage requis ?','yn'],['fouille_sol','Sol exposé ?','yn'],['fouille_coupe','Coupe de tuile, brique, bloc ou cloison sèche ?','yn'],['fouille_cvc','Contrôles de ventilation (CVC) assurés ?','yn']]],
-  ['ligne','Piquage à chaud / rupture de ligne — permis requis',[['ligne_gmp','En zone GMP ? (revue Qualité requise)','yn']]],
+  ['ligne','Ouverture de ligne',[['ligne_gmp','En zone BPM ? (revue Qualité requise)','yn']]],
   ['percage','Perforation de plancher ou de mur',[]],
   ['toit','Accès au toit — permis requis',[]],
   ['permis_ville','Permis municipaux requis',[]],
@@ -47,9 +47,9 @@ const PTA_PROGRAM = [
 ];
 const PTA_HAZ_ROWS = 5;
 // Chaque procédure qui exige un permis distinct : numéro du permis spécifique à référencer (norme 12.01).
-['loto','shunt','cse','elec','chaud','hauteur','echafaud','levage','fouille','ligne','toit'].forEach(k=>{
+['loto','shunt','cse','elec','chaud','hauteur','echafaud','levage','fouille','toit'].forEach(k=>{
   const proc = PTA_PROCS.find(p=>p[0]===k);
-  proc[2].push([k+'_permis','N° du permis spécifique (ex. 00530)','text']);
+  proc[2].push([k+'_permis','Numéro de permis (ex. 00530)','text']);
 });
 
 function ptaSelect(key, opts){
